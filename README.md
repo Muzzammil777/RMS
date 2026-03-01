@@ -173,19 +173,6 @@ This repo includes a **Render Blueprint** (`render.yaml`) that configures both s
 
 ---
 
-## 🔑 Default Admin Access
-
-After seeding the database, log into the admin dashboard at `/admin`:
-
-| Field | Value |
-|---|---|
-| Email | `admin@restaurant.com` |
-| Password | `admin123` |
-
-> ⚠️ Change the default password immediately after first login.
-
----
-
 ## 📡 API Overview
 
 | Prefix | Description |
@@ -205,9 +192,3 @@ After seeding the database, log into the admin dashboard at `/admin`:
 | `/api/client/auth` | Customer authentication |
 
 Full interactive API docs available at `/docs` (Swagger UI) and `/redoc`.
-
----
-
-## 📄 License
-
-MIT — feel free to use, modify, and distribute.
