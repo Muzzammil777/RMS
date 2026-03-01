@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { CheckCircle2, Clock3, Info, XCircle } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistance } from "date-fns";
 import { Badge } from "@/client/app/components/ui/badge";
 import { Card } from "@/client/app/components/ui/card";
 import { cn } from "@/client/app/components/ui/utils";
@@ -57,7 +57,7 @@ export function NotificationCard({
 }) {
   const timeAgo = useMemo(() => {
     try {
-      return formatDistanceToNow(notification.createdAt, { addSuffix: true });
+      return formatDistance(notification.createdAt, new Date(), { addSuffix: true });
     } catch {
       return "";
     }
