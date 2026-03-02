@@ -363,7 +363,7 @@ export default function Menu({ isLoggedIn, user, onAddToCart, onNavigate, onTogg
                   )}
                 </div>
 
-                <div className="relative z-10 p-8 flex flex-col flex-grow">
+                <div className="relative z-10 p-4 sm:p-6 flex flex-col flex-grow">
                   <div className="mb-3">
                     <h3 className="font-bold text-2xl text-[#FAF7F2] group-hover:text-[#C8A47A] transition-colors duration-300" style={{ fontFamily: "'Playfair Display', serif" }}>
                       {item.name}
@@ -403,18 +403,18 @@ export default function Menu({ isLoggedIn, user, onAddToCart, onNavigate, onTogg
                     </div>
                     
                     {isLoggedIn ? (
-                      <div className="flex gap-3">
+                      <div className="flex gap-2 min-w-0">
                         <button
                           onClick={() => quickAddToCart(item)}
                           disabled={!item.available}
-                          className="w-12 h-12 flex items-center justify-center bg-[#3E2723] text-[#C8A47A] border border-[#C8A47A]/30 rounded-xl hover:bg-[#C8A47A] hover:text-[#2D1B10] transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed shadow-lg active:scale-95 group/btn"
+                          className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-[#3E2723] text-[#C8A47A] border border-[#C8A47A]/30 rounded-xl hover:bg-[#C8A47A] hover:text-[#2D1B10] transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed shadow-lg active:scale-95 group/btn"
                         >
-                          <Plus className="w-6 h-6" />
+                          <Plus className="w-5 h-5" />
                         </button>
                         <button
                           onClick={() => setSelectedItem(item)}
                           disabled={!item.available}
-                          className="px-6 py-3 bg-gradient-to-r from-[#8B5A2B] to-[#C8A47A] text-[#FAF7F2] rounded-xl hover:shadow-[0_10px_20px_-10px_rgba(200,164,122,0.5)] transition-all duration-300 disabled:opacity-30 text-xs font-black uppercase tracking-[0.15em] active:scale-95"
+                          className="flex-1 min-w-0 px-2 py-2.5 bg-gradient-to-r from-[#8B5A2B] to-[#C8A47A] text-[#FAF7F2] rounded-xl hover:shadow-[0_10px_20px_-10px_rgba(200,164,122,0.5)] transition-all duration-300 disabled:opacity-30 text-xs font-black uppercase tracking-[0.1em] active:scale-95 truncate"
                         >
                           Customize
                         </button>
