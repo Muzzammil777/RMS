@@ -45,6 +45,8 @@ class OrderCreate(BaseModel):
     date: Optional[str] = None
     deliveryAddress: Optional[str] = None
     invoiceUrl: Optional[str] = None
+    tableNumber: Optional[int] = None
+    customerName: Optional[str] = None
 
 
 class OrderUpdate(BaseModel):

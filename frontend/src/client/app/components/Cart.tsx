@@ -18,6 +18,7 @@ interface CartProps {
 export default function Cart({ cart, user, onUpdateQuantity, onRemoveItem, onCheckout }: CartProps) {
   const loyalty = useLoyalty();
   const [orderType, setOrderType] = useState<'dine-in' | 'takeaway' | null>(null);
+  const [tableNumber, setTableNumber] = useState<string>('');
   const [selectedPayment, setSelectedPayment] = useState<'upi' | 'card' | 'cash' | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
@@ -126,7 +127,9 @@ export default function Cart({ cart, user, onUpdateQuantity, onRemoveItem, onChe
         status: 'preparing',
         type: orderType,
         date: new Date().toISOString(),
-        deliveryAddress: user?.address || ''
+        deliveryAddress: user?.address || '',
+        tableNumber: orderType === 'dine-in' ? (parseInt(tableNumber) || 0) : 0,
+        customerName: user?.name || 'Guest',
       };
       
       setTimeout(() => {
@@ -286,7 +289,7 @@ export default function Cart({ cart, user, onUpdateQuantity, onRemoveItem, onChe
               <h2 className="text-xl font-bold mb-4">Select Order Type</h2>
               <div className="grid grid-cols-2 gap-3">
                 <button
-                  onClick={() => setOrderType('dine-in')}
+                  onClick={() => { setOrderType('dine-in'); setTableNumber(''); }}
                   className={`p-4 border-2 rounded-lg transition-all ${
                     orderType === 'dine-in'
                       ? 'border-black bg-gray-50'
@@ -297,7 +300,7 @@ export default function Cart({ cart, user, onUpdateQuantity, onRemoveItem, onChe
                   <p className="text-sm text-gray-600 mt-1">Eat at restaurant</p>
                 </button>
                 <button
-                  onClick={() => setOrderType('takeaway')}
+                  onClick={() => { setOrderType('takeaway'); setTableNumber(''); }}
                   className={`p-4 border-2 rounded-lg transition-all ${
                     orderType === 'takeaway'
                       ? 'border-black bg-gray-50'
@@ -308,6 +311,23 @@ export default function Cart({ cart, user, onUpdateQuantity, onRemoveItem, onChe
                   <p className="text-sm text-gray-600 mt-1">Pick up later</p>
                 </button>
               </div>
+
+              {/* Table number input – only for dine-in */}
+              {orderType === 'dine-in' && (
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Table Number <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    placeholder="Enter your table number"
+                    value={tableNumber}
+                    onChange={(e) => setTableNumber(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Payment Method Selection */}
@@ -624,7 +644,8 @@ export default function Cart({ cart, user, onUpdateQuantity, onRemoveItem, onChe
                     !orderType ||
                     !selectedPayment ||
                     isProcessing ||
-                    (selectedPayment === 'upi' && !upiId.trim())
+                    (selectedPayment === 'upi' && !upiId.trim()) ||
+                    (orderType === 'dine-in' && !tableNumber.trim())
                   }
                   className="w-full bg-[#C8A47A] text-[#2D1B10] py-3 rounded-lg font-semibold hover:brightness-110 transition-all disabled:opacity-60 disabled:cursor-not-allowed mb-3"
                 >

@@ -65,6 +65,8 @@ export interface Order {
   date: string;
   deliveryAddress?: string;
   invoiceUrl?: string;
+  tableNumber?: number;
+  customerName?: string;
 }
 
 export interface AppState {

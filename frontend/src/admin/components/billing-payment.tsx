@@ -41,6 +41,7 @@ interface Order {
   id: string;
   table_number: number;
   customer_name: string;
+  order_type: string;
   items: Array<{ name: string; quantity: number; price: number }>;
   total: number;
   status: string;
@@ -105,6 +106,7 @@ export function BillingPayment() {
     id: o._id || o.id,
     table_number: o.tableNumber || o.table_number || 0,
     customer_name: o.customerName || o.customer_name || 'Guest',
+    order_type: o.type || o.order_type || 'dine-in',
     items: (o.items || []).map((item: any) => ({
       name: item.name,
       quantity: item.quantity,
@@ -193,7 +195,10 @@ export function BillingPayment() {
       total: item.quantity * item.price,
     }));
     setBillItems(items);
-    toast.success(`Order loaded for Table ${order.table_number}`);
+    const label = order.order_type === 'takeaway'
+      ? `Takeaway – ${order.customer_name}`
+      : `Table ${order.table_number} – ${order.customer_name}`;
+    toast.success(`Order loaded: ${label}`);
   };
 
   const updateItemQuantity = (itemId: string, delta: number) => {
@@ -341,7 +346,7 @@ export function BillingPayment() {
     const infoStartY = 50;
     
     doc.text(`Customer: ${invoice.customer_name}`, 14, infoStartY);
-    doc.text(`Table: ${invoice.table_number}`, 14, infoStartY + 6);
+    doc.text(`${invoice.table_number ? `Table: ${invoice.table_number}` : 'Takeaway'}`, 14, infoStartY + 6);
     doc.text(`Date: ${new Date(invoice.created_at).toLocaleString()}`, pageWidth - 14, infoStartY, { align: 'right' });
     doc.text(`Payment: ${invoice.payment_mode.toUpperCase()}`, pageWidth - 14, infoStartY + 6, { align: 'right' });
     
@@ -459,7 +464,7 @@ export function BillingPayment() {
         <div class="info">
           <div>
             <p><strong>Customer:</strong> ${invoice.customer_name}</p>
-            <p><strong>Table:</strong> ${invoice.table_number}</p>
+            <p><strong>${invoice.table_number ? `Table: ${invoice.table_number}` : 'Takeaway'}</strong></p>
           </div>
           <div style="text-align: right;">
             <p><strong>Date:</strong> ${new Date(invoice.created_at).toLocaleString()}</p>
@@ -564,7 +569,9 @@ export function BillingPayment() {
                       >
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between mb-2">
-                            <span className="font-medium">Table {order.table_number}</span>
+                            <span className="font-medium">
+                              {order.order_type === 'takeaway' ? 'Takeaway' : `Table ${order.table_number}`}
+                            </span>
                             <Badge
                               variant={order.status === 'bill_requested' ? 'default' : 'outline'}
                               className={order.status === 'bill_requested' ? 'bg-amber-500 text-white' : ''}
@@ -598,7 +605,7 @@ export function BillingPayment() {
                 <CardTitle className="text-lg">Bill Items</CardTitle>
                 <CardDescription>
                   {selectedOrder 
-                    ? `Table ${selectedOrder.table_number} - ${selectedOrder.customer_name}` 
+                    ? `${selectedOrder.order_type === 'takeaway' ? 'Takeaway' : `Table ${selectedOrder.table_number}`} – ${selectedOrder.customer_name}` 
                     : 'No order selected'}
                 </CardDescription>
               </CardHeader>
@@ -805,7 +812,7 @@ export function BillingPayment() {
                     <TableRow key={invoice.id}>
                       <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
                       <TableCell>{invoice.customer_name}</TableCell>
-                      <TableCell>Table {invoice.table_number}</TableCell>
+                      <TableCell>{invoice.table_number ? `Table ${invoice.table_number}` : 'Takeaway'}</TableCell>
                       <TableCell>{new Date(invoice.created_at).toLocaleString()}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{invoice.payment_mode.toUpperCase()}</Badge>
@@ -966,7 +973,7 @@ export function BillingPayment() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Table Number</p>
-                  <p className="font-medium">Table {previewInvoice.table_number}</p>
+                  <p className="font-medium">{previewInvoice.table_number ? `Table ${previewInvoice.table_number}` : 'Takeaway'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Date & Time</p>

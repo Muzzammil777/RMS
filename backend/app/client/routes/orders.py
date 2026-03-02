@@ -30,6 +30,8 @@ def _serialize_order(doc: dict) -> dict:
         "date": doc.get("date"),
         "deliveryAddress": doc.get("deliveryAddress"),
         "invoiceUrl": doc.get("invoiceUrl"),
+        "tableNumber": doc.get("tableNumber"),
+        "customerName": doc.get("customerName"),
     }
 
 
@@ -72,6 +74,8 @@ async def create_order(body: OrderCreate):
         "date": body.date,
         "deliveryAddress": body.deliveryAddress,
         "invoiceUrl": body.invoiceUrl,
+        "tableNumber": body.tableNumber,
+        "customerName": body.customerName,
         "createdAt": _utc_now(),
         "updatedAt": _utc_now(),
     }
