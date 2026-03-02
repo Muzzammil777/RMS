@@ -1,9 +1,93 @@
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, Component } from 'react';
+import type { ReactNode } from 'react';
 
-// Lazy-load each app shell
-const AdminApp = lazy(() => import('@/admin/App'));
-const ClientApp = lazy(() => import('@/client/ClientApp'));
+// ---------------------------------------------------------------------------
+// Retry wrapper — retries a dynamic import up to `retries` times with
+// exponential back-off. Prevents one-time ERR_NETWORK_CHANGED / cold-start
+// failures from crashing the app.
+// ---------------------------------------------------------------------------
+function lazyWithRetry<T extends React.ComponentType<unknown>>(
+  importFn: () => Promise<{ default: T }>,
+  retries = 3,
+  baseDelay = 800,
+): React.LazyExoticComponent<T> {
+  return lazy(
+    () =>
+      new Promise<{ default: T }>((resolve, reject) => {
+        const attempt = (remaining: number) => {
+          importFn()
+            .then(resolve)
+            .catch((err) => {
+              if (remaining <= 0) {
+                reject(err);
+              } else {
+                setTimeout(() => attempt(remaining - 1), baseDelay * (retries - remaining + 1));
+              }
+            });
+        };
+        attempt(retries);
+      }),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Error boundary — catches "Failed to fetch dynamically imported module"
+// errors (chunk not found after a new deploy) and triggers a full-page reload
+// so the user transparently picks up the latest assets.
+// ---------------------------------------------------------------------------
+class ChunkErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    const msg = error?.message ?? '';
+    if (
+      msg.includes('Failed to fetch dynamically imported module') ||
+      msg.includes('Importing a module script failed') ||
+      msg.includes('Unable to preload CSS')
+    ) {
+      return { hasError: true };
+    }
+    return null;
+  }
+
+  componentDidCatch(error: Error) {
+    const msg = error?.message ?? '';
+    if (
+      msg.includes('Failed to fetch dynamically imported module') ||
+      msg.includes('Importing a module script failed') ||
+      msg.includes('Unable to preload CSS')
+    ) {
+      // Hard reload — browser will re-fetch the latest chunk manifest
+      window.location.reload();
+    }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-[#FFF8F0]">
+          <div className="animate-pulse text-[#8B5A2B] text-lg font-medium">
+            Updating… please wait
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Lazy-load each app shell (with network-error retry)
+// ---------------------------------------------------------------------------
+const AdminApp  = lazyWithRetry(() => import('@/admin/App'));
+const ClientApp = lazyWithRetry(() => import('@/client/ClientApp'));
 
 const Fallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-[#FFF8F0]">
@@ -17,17 +101,21 @@ const router = createBrowserRouter(
     {
       path: '/admin/*',
       element: (
-        <Suspense fallback={<Fallback />}>
-          <AdminApp />
-        </Suspense>
+        <ChunkErrorBoundary>
+          <Suspense fallback={<Fallback />}>
+            <AdminApp />
+          </Suspense>
+        </ChunkErrorBoundary>
       ),
     },
     {
       path: '/client/*',
       element: (
-        <Suspense fallback={<Fallback />}>
-          <ClientApp />
-        </Suspense>
+        <ChunkErrorBoundary>
+          <Suspense fallback={<Fallback />}>
+            <ClientApp />
+          </Suspense>
+        </ChunkErrorBoundary>
       ),
     },
     // Catch-all: redirect any unmatched URL back to the client app

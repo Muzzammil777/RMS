@@ -13,6 +13,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="RMS" />
     <meta name="application-name" content="RMS" />
+    <!-- Auto-upgrade HTTP sub-resource requests (images, scripts) to HTTPS.
+         Fixes mixed-content warnings for menu item images stored with http:// URLs. -->
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests" />
   </head>
   <body>
     <div id="root"></div>
