@@ -30,6 +30,8 @@ const router = createBrowserRouter(
         </Suspense>
       ),
     },
+    // Catch-all: redirect any unmatched URL back to the client app
+    { path: '*', element: <Navigate to="/client" replace /> },
   ],
   {
     future: {
