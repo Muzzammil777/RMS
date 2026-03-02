@@ -87,7 +87,7 @@ export default function Home({
             className="text-5xl md:text-7xl font-bold mb-6 text-white drop-shadow-2xl leading-tight" 
             style={{ fontFamily: "'Playfair Display', serif" }}
           >
-            Urban Bites
+            RMS by Movi Cloud Labs
           </h1>
           <p className="text-xl md:text-2xl text-white/90 font-light mb-12 max-w-3xl mx-auto leading-relaxed italic">
             "Home of taste where food is prepared with care, quality ingredients, and attention to taste."
