@@ -12,6 +12,7 @@ export interface MenuItem {
   calories: number; // Calories in kcal
   prepTime: string; // Preparation time (e.g., "15-20 mins")
   offer?: string; // Optional offer/deal (e.g., "10% OFF")
+  cuisine?: 'North Indian' | 'South Indian' | 'Chinese' | 'Italian' | 'Continental';
 }
 
 export const menuData: MenuItem[] = [
@@ -29,6 +30,7 @@ export const menuData: MenuItem[] = [
     popular: true,
     calories: 280,
     prepTime: "15-20 mins",
+    cuisine: "North Indian",
   },
   {
     id: "v2",
@@ -43,6 +45,7 @@ export const menuData: MenuItem[] = [
     calories: 210,
     prepTime: "12-15 mins",
     offer: "15% OFF",
+    cuisine: "Chinese",
   },
   {
     id: "v3",
@@ -56,6 +59,7 @@ export const menuData: MenuItem[] = [
     available: true,
     calories: 240,
     prepTime: "18-22 mins",
+    cuisine: "North Indian",
   },
 
   // Veg Main Course
@@ -73,6 +77,7 @@ export const menuData: MenuItem[] = [
     todaysSpecial: true,
     calories: 385,
     prepTime: "25-30 mins",
+    cuisine: "North Indian",
   },
   {
     id: "v5",
@@ -87,6 +92,7 @@ export const menuData: MenuItem[] = [
     popular: true,
     calories: 420,
     prepTime: "20-25 mins",
+    cuisine: "North Indian",
   },
   {
     id: "v6",
@@ -101,6 +107,7 @@ export const menuData: MenuItem[] = [
     calories: 450,
     prepTime: "30-35 mins",
     offer: "10% OFF",
+    cuisine: "South Indian",
   },
   {
     id: "v7",
@@ -114,6 +121,7 @@ export const menuData: MenuItem[] = [
     available: true,
     calories: 395,
     prepTime: "22-28 mins",
+    cuisine: "North Indian",
   },
   {
     id: "v8",
@@ -127,6 +135,7 @@ export const menuData: MenuItem[] = [
     available: true,
     calories: 520,
     prepTime: "25-30 mins",
+    cuisine: "North Indian",
   },
 
   // Non-Veg Starters
@@ -143,6 +152,7 @@ export const menuData: MenuItem[] = [
     popular: true,
     calories: 310,
     prepTime: "18-22 mins",
+    cuisine: "North Indian",
   },
   {
     id: "nv2",
@@ -157,6 +167,7 @@ export const menuData: MenuItem[] = [
     calories: 340,
     prepTime: "15-18 mins",
     offer: "20% OFF",
+    cuisine: "North Indian",
   },
   {
     id: "nv3",
@@ -170,6 +181,7 @@ export const menuData: MenuItem[] = [
     available: true,
     calories: 380,
     prepTime: "20-25 mins",
+    cuisine: "North Indian",
   },
 
   // Non-Veg Main Course
@@ -187,6 +199,7 @@ export const menuData: MenuItem[] = [
     todaysSpecial: true,
     calories: 490,
     prepTime: "25-30 mins",
+    cuisine: "North Indian",
   },
   {
     id: "nv5",
@@ -201,6 +214,7 @@ export const menuData: MenuItem[] = [
     popular: true,
     calories: 550,
     prepTime: "30-35 mins",
+    cuisine: "South Indian",
   },
   {
     id: "nv6",
@@ -215,6 +229,7 @@ export const menuData: MenuItem[] = [
     calories: 520,
     prepTime: "35-40 mins",
     offer: "Free Dessert",
+    cuisine: "North Indian",
   },
   {
     id: "nv7",
@@ -228,6 +243,7 @@ export const menuData: MenuItem[] = [
     available: true,
     calories: 360,
     prepTime: "20-25 mins",
+    cuisine: "South Indian",
   },
   {
     id: "nv8",
@@ -241,6 +257,7 @@ export const menuData: MenuItem[] = [
     available: true,
     calories: 440,
     prepTime: "22-28 mins",
+    cuisine: "Continental",
   },
 
   // Breads
@@ -256,6 +273,7 @@ export const menuData: MenuItem[] = [
     available: true,
     calories: 280,
     prepTime: "8-10 mins",
+    cuisine: "North Indian",
   },
   {
     id: "b2",
@@ -269,6 +287,7 @@ export const menuData: MenuItem[] = [
     available: true,
     calories: 290,
     prepTime: "8-10 mins",
+    cuisine: "Italian",
   },
   {
     id: "b3",
@@ -282,6 +301,7 @@ export const menuData: MenuItem[] = [
     available: true,
     calories: 120,
     prepTime: "6-8 mins",
+    cuisine: "North Indian",
   },
 
   // Desserts
@@ -299,6 +319,7 @@ export const menuData: MenuItem[] = [
     todaysSpecial: true,
     calories: 375,
     prepTime: "12-15 mins",
+    cuisine: "North Indian",
   },
   {
     id: "d2",
@@ -312,6 +333,7 @@ export const menuData: MenuItem[] = [
     available: true,
     calories: 285,
     prepTime: "10-12 mins",
+    cuisine: "North Indian",
   },
   {
     id: "d3",
@@ -325,6 +347,7 @@ export const menuData: MenuItem[] = [
     available: true,
     calories: 220,
     prepTime: "5-8 mins",
+    cuisine: "North Indian",
   },
 
   // Beverages
@@ -340,6 +363,7 @@ export const menuData: MenuItem[] = [
     available: true,
     calories: 180,
     prepTime: "3-5 mins",
+    cuisine: "North Indian",
   },
   {
     id: "bv2",
@@ -353,6 +377,7 @@ export const menuData: MenuItem[] = [
     available: true,
     calories: 90,
     prepTime: "5-7 mins",
+    cuisine: "South Indian",
   },
   {
     id: "bv3",
@@ -366,6 +391,7 @@ export const menuData: MenuItem[] = [
     available: true,
     calories: 45,
     prepTime: "2-3 mins",
+    cuisine: "Continental",
   },
 ];
 

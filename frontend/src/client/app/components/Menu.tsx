@@ -26,7 +26,8 @@ export default function Menu({ isLoggedIn, user, onAddToCart, onNavigate, onTogg
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
 
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [filterVeg, setFilterVeg] = useState<'all' | 'veg' | 'non-veg'>('all');
+  const [filterVeg, setFilterVeg] = useState<'all' | 'veg' | 'non-veg' | 'special'>('all');
+  const [filterCuisine, setFilterCuisine] = useState<'all' | 'North Indian' | 'South Indian' | 'Chinese' | 'Italian' | 'Continental'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [customization, setCustomization] = useState({
@@ -60,14 +61,17 @@ export default function Menu({ isLoggedIn, user, onAddToCart, onNavigate, onTogg
       const vegMatch =
         filterVeg === 'all' ||
         (filterVeg === 'veg' && item.isVeg) ||
-        (filterVeg === 'non-veg' && !item.isVeg);
+        (filterVeg === 'non-veg' && !item.isVeg) ||
+        (filterVeg === 'special' && item.todaysSpecial);
+      const cuisineMatch =
+        filterCuisine === 'all' || item.cuisine === filterCuisine;
       const searchMatch =
         searchQuery === '' ||
         item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.description.toLowerCase().includes(searchQuery.toLowerCase());
-      return categoryMatch && vegMatch && searchMatch;
+      return categoryMatch && vegMatch && cuisineMatch && searchMatch;
     });
-  }, [filterVeg, menuItems, searchQuery, selectedCategory]);
+  }, [filterCuisine, filterVeg, menuItems, searchQuery, selectedCategory]);
 
   const addons = [
     { id: 'extra-cheese', name: 'Extra Cheese', price: 50 },
@@ -256,9 +260,9 @@ export default function Menu({ isLoggedIn, user, onAddToCart, onNavigate, onTogg
               </div>
             </div>
 
-            {/* Diet Filter */}
+            {/* Diet & Special Filter */}
             <div className="pt-6 border-t border-[#E8DED0]/50">
-              <div className="flex gap-4">
+              <div className="flex flex-wrap gap-4">
                 <button
                   onClick={() => setFilterVeg('all')}
                   className={`flex-1 md:flex-none px-8 py-3 rounded-xl border-2 transition-all font-bold uppercase tracking-widest text-xs ${
@@ -267,7 +271,7 @@ export default function Menu({ isLoggedIn, user, onAddToCart, onNavigate, onTogg
                       : 'bg-white/80 text-[#6D4C41] border-[#E8DED0] hover:border-[#3E2723]'
                   }`}
                 >
-                  All Cuisine
+                  All
                 </button>
                 <button
                   onClick={() => setFilterVeg('veg')}
@@ -289,6 +293,41 @@ export default function Menu({ isLoggedIn, user, onAddToCart, onNavigate, onTogg
                 >
                   <span className="w-2.5 h-2.5 rounded-full bg-red-400"></span> Non-Veg
                 </button>
+                <button
+                  onClick={() => setFilterVeg('special')}
+                  className={`flex-1 md:flex-none px-8 py-3 rounded-xl border-2 flex items-center justify-center gap-2 transition-all font-bold uppercase tracking-widest text-xs ${
+                    filterVeg === 'special'
+                      ? 'bg-[#C8A47A] text-[#2D1B10] border-[#C8A47A] shadow-lg shadow-[#C8A47A]/30'
+                      : 'bg-white/80 text-[#6D4C41] border-[#E8DED0] hover:border-[#C8A47A] hover:text-[#8B5A2B]'
+                  }`}
+                >
+                  <Sparkles className="w-3 h-3" /> Chef's Special
+                </button>
+              </div>
+            </div>
+
+            {/* Cuisine Filter */}
+            <div className="pt-6 border-t border-[#E8DED0]/50">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="p-2 bg-[#8B5A2B]/10 rounded-lg">
+                  <Filter className="w-5 h-5 text-[#8B5A2B]" />
+                </div>
+                <span className="font-bold text-[#3E2723] text-xl" style={{ fontFamily: "'Playfair Display', serif" }}>Cuisine</span>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {(['all', 'North Indian', 'South Indian', 'Chinese', 'Italian', 'Continental'] as const).map((cuisine) => (
+                  <button
+                    key={cuisine}
+                    onClick={() => setFilterCuisine(cuisine)}
+                    className={`px-6 py-3 rounded-full border-2 transition-all duration-300 font-bold text-sm uppercase tracking-wider ${
+                      filterCuisine === cuisine
+                        ? 'bg-[#8B5A2B] text-white border-[#8B5A2B] shadow-lg shadow-[#8B5A2B]/30 scale-105'
+                        : 'bg-white/80 text-[#6D4C41] border-[#E8DED0] hover:border-[#8B5A2B] hover:text-[#8B5A2B]'
+                    }`}
+                  >
+                    {cuisine === 'all' ? 'All Cuisines' : cuisine}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
@@ -344,7 +383,7 @@ export default function Menu({ isLoggedIn, user, onAddToCart, onNavigate, onTogg
                     {item.todaysSpecial && (
                       <span className="bg-[#C8A47A] text-[#2D1B10] px-4 py-1.5 rounded-full text-[10px] font-black shadow-xl flex items-center gap-2 uppercase tracking-widest animate-pulse">
                         <Sparkles className="w-3 h-3" />
-                        Today's Special
+                        Chef's Special
                       </span>
                     )}
                     {item.popular && (
@@ -443,6 +482,7 @@ export default function Menu({ isLoggedIn, user, onAddToCart, onNavigate, onTogg
                   onClick={() => {
                     setSelectedCategory('All');
                     setFilterVeg('all');
+                    setFilterCuisine('all');
                     setSearchQuery('');
                   }}
                   className="px-10 py-4 bg-[#8B5A2B] text-white rounded-full font-black uppercase tracking-widest hover:bg-[#3E2723] transition-all shadow-2xl"
