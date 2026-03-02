@@ -58,6 +58,16 @@ interface WaitingQueueEntry {
   estimatedWait: string;
 }
 
+// Fixed time slots available for reservation
+const TIME_SLOTS = [
+  { label: '7:30 AM - 8:50 AM',   startTime: '07:30', endTime: '08:50' },
+  { label: '9:10 AM - 10:30 AM',  startTime: '09:10', endTime: '10:30' },
+  { label: '12:00 PM - 1:20 PM',  startTime: '12:00', endTime: '13:20' },
+  { label: '1:40 PM - 3:00 PM',   startTime: '13:40', endTime: '15:00' },
+  { label: '6:40 PM - 8:00 PM',   startTime: '18:40', endTime: '20:00' },
+  { label: '8:20 PM - 9:40 PM',   startTime: '20:20', endTime: '21:40' },
+];
+
 // Tables and locations/segments are fetched dynamically from the backend
 // (which reads from the same MongoDB collection managed by the admin panel).
 
@@ -333,8 +343,8 @@ export default function Reservation({ user, onNavigate }: ReservationProps) {
   const handleCheckAvailability = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!checkData.date || !checkData.startTime || !checkData.endTime) {
-      alert('Please select date, start time and end time');
+    if (!checkData.date || !checkData.startTime) {
+      alert('Please select a date and time slot');
       return;
     }
 
@@ -419,8 +429,8 @@ export default function Reservation({ user, onNavigate }: ReservationProps) {
       alert('Please select a date before reserving.');
       return;
     }
-    if (!checkData.startTime || !checkData.endTime) {
-      alert('Please select start and end time before reserving.');
+    if (!checkData.startTime) {
+      alert('Please select a time slot before reserving.');
       return;
     }
 
@@ -724,7 +734,7 @@ export default function Reservation({ user, onNavigate }: ReservationProps) {
                 </div>
 
                 <form onSubmit={handleCheckAvailability} className="space-y-6 mb-8">
-                  <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
                     {/* Date */}
                     <div>
                       <label className="block text-sm font-semibold mb-2 text-gray-800">Date</label>
@@ -741,29 +751,23 @@ export default function Reservation({ user, onNavigate }: ReservationProps) {
                       />
                     </div>
 
-                    {/* Start Time */}
+                    {/* Time Slot */}
                     <div>
-                      <label className="block text-sm font-semibold mb-2 text-gray-800">Start Time</label>
-                      <input
-                        type="time"
+                      <label className="block text-sm font-semibold mb-2 text-gray-800">Time Slot</label>
+                      <select
                         value={checkData.startTime}
-                        onChange={(e) => setCheckData({ ...checkData, startTime: e.target.value })}
+                        onChange={(e) => {
+                          const slot = TIME_SLOTS.find(s => s.startTime === e.target.value);
+                          setCheckData({ ...checkData, startTime: slot?.startTime ?? '', endTime: slot?.endTime ?? '' });
+                        }}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#8B5A2B] focus:ring-2 focus:ring-[#8B5A2B]/20"
                         required
-                      />
-                    </div>
-
-                    {/* End Time */}
-                    <div>
-                      <label className="block text-sm font-semibold mb-2 text-gray-800">End Time</label>
-                      <input
-                        type="time"
-                        value={checkData.endTime}
-                        min={checkData.startTime || undefined}
-                        onChange={(e) => setCheckData({ ...checkData, endTime: e.target.value })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#8B5A2B] focus:ring-2 focus:ring-[#8B5A2B]/20"
-                        required
-                      />
+                      >
+                        <option value="">Select a slot</option>
+                        {TIME_SLOTS.map((slot) => (
+                          <option key={slot.startTime} value={slot.startTime}>{slot.label}</option>
+                        ))}
+                      </select>
                     </div>
 
                     {/* Guests */}
@@ -814,7 +818,7 @@ export default function Reservation({ user, onNavigate }: ReservationProps) {
 
                   <button
                     type="submit"
-                    disabled={!checkData.date || !checkData.startTime || !checkData.endTime || isLoading}
+                    disabled={!checkData.date || !checkData.startTime || isLoading}
                     className="w-full bg-[#8B5A2B] text-white py-4 rounded-lg font-bold text-lg hover:bg-[#6D4822] transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed shadow-md flex items-center justify-center gap-3"
                   >
                     {isLoading ? (
