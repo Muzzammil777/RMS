@@ -196,6 +196,7 @@ function pathFromModule(module: Module): AppRoute {
 }
 
 const FAVORITES_STORAGE_KEY = 'favorites.v1';
+const SESSION_STORAGE_KEY   = 'rms_client_session.v1';
 
 function loadFavoritesFromStorage(): string[] {
   try {
@@ -209,6 +210,39 @@ function loadFavoritesFromStorage(): string[] {
   }
 }
 
+/** Save minimal session data (user + cart) so a refresh keeps the user logged in. */
+function saveSession(state: AppState) {
+  try {
+    localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({
+      user: state.user,
+      isLoggedIn: state.isLoggedIn,
+      cart: state.cart,
+    }));
+  } catch { /* storage might be full — ignore */ }
+}
+
+/** Restore session from localStorage. Returns partial AppState overrides or null. */
+function loadSession(): Partial<AppState> | null {
+  try {
+    const raw = localStorage.getItem(SESSION_STORAGE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw) as { user: User | null; isLoggedIn: boolean; cart: CartItem[] };
+    if (!data.isLoggedIn || !data.user) return null;
+    return {
+      isLoggedIn: true,
+      user: data.user,
+      cart: Array.isArray(data.cart) ? data.cart : [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+function clearSession() {
+  localStorage.removeItem(SESSION_STORAGE_KEY);
+  localStorage.removeItem(FAVORITES_STORAGE_KEY);
+}
+
 export default function App() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -216,23 +250,24 @@ export default function App() {
   const initialModule = useMemo(() => moduleFromPath(window.location.pathname), []);
   const [activeModule, setActiveModule] = useState<Module>(initialModule);
   const initialFavorites = useMemo(() => loadFavoritesFromStorage(), []);
-  const [appState, setAppState] = useState<AppState>({
+  const [appState, setAppState] = useState<AppState>(() => ({
     isLoggedIn: false,
     user: null,
     cart: [],
     orders: [],
     currentOrder: null,
     queueNumber: null,
-    notifications: []
-  });
+    notifications: [],
+    // Restore persisted session (user + cart) so a refresh keeps the user logged in
+    ...loadSession(),
+  }));
 
+  // Persist user + cart to localStorage whenever they change
   useEffect(() => {
-    if (!appState.user) {
-      localStorage.removeItem(FAVORITES_STORAGE_KEY);
-      return;
-    }
+    if (!appState.user) return;
+    saveSession(appState);
     localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(appState.user.favorites ?? []));
-  }, [appState.user]);
+  }, [appState.user, appState.cart, appState.isLoggedIn]);
 
   useEffect(() => {
     const normalized = normalizePathname(location.pathname);
@@ -273,18 +308,20 @@ export default function App() {
 
   const handleLogin = (user: User) => {
     const persistedFavorites = loadFavoritesFromStorage();
-    setAppState(prev => ({
-      ...prev,
-      isLoggedIn: true,
-      user: {
-        ...user,
-        favorites: persistedFavorites.length > 0 ? persistedFavorites : user.favorites,
-      }
-    }));
-    handleModuleChange('menu');
+    const nextUser = {
+      ...user,
+      favorites: persistedFavorites.length > 0 ? persistedFavorites : user.favorites,
+    };
+    setAppState(prev => ({ ...prev, isLoggedIn: true, user: nextUser }));
+    // After login, go to the page the user was trying to visit (if any), else menu
+    const targetModule = initialModule !== 'login' && initialModule !== 'home'
+      ? initialModule
+      : 'menu';
+    handleModuleChange(targetModule);
   };
 
   const handleLogout = () => {
+    clearSession();
     setAppState({
       isLoggedIn: false,
       user: null,
