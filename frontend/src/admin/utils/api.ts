@@ -3,8 +3,12 @@
  * Restaurant Management System
  */
 
-// Backend API base URL - use env variable or default to localhost
-const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api/admin';
+// Backend API base URL
+// In dev mode, use relative path so Vite proxy handles it (avoids browser HTTPS auto-upgrade)
+// In production, use VITE_API_URL env variable
+const API_BASE_URL = import.meta.env.PROD
+  ? (import.meta.env.VITE_API_URL || '') + '/api/admin'
+  : '/api/admin';
 
 // Get current user info from localStorage (for audit headers)
 const getCurrentUser = () => {
@@ -669,7 +673,8 @@ export const menuApi = {
     if (params?.available !== undefined) query.append('available', String(params.available));
     if (params?.dietType) query.append('dietType', params.dietType);
     if (params?.search) query.append('search', params.search);
-    return fetchApi<any[]>(`/menu/?${query.toString()}`);
+    const queryStr = query.toString();
+    return fetchApi<any[]>(`/menu${queryStr ? '?' + queryStr : ''}`);
   },
 
   // Get stats
@@ -682,7 +687,7 @@ export const menuApi = {
   get: (id: string) => fetchApi<any>(`/menu/${id}`),
 
   // Create item
-  create: (data: any) => fetchApi<any>('/menu/', {
+  create: (data: any) => fetchApi<any>('/menu', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
@@ -1208,11 +1213,12 @@ export const offersApi = {
 // ============ NOTIFICATIONS API ============
 export const notificationsApi = {
   // List notifications
-  list: (params?: { type?: string; status?: string; channel?: string }) => {
+  list: (params?: { type?: string; status?: string; channel?: string; limit?: number }) => {
     const query = new URLSearchParams();
     if (params?.type) query.append('type', params.type);
     if (params?.status) query.append('status', params.status);
     if (params?.channel) query.append('channel', params.channel);
+    if (params?.limit) query.append('limit', String(params.limit));
     return fetchApi<{ data: any[]; total: number }>(`/notifications?${query.toString()}`);
   },
 

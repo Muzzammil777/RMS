@@ -52,7 +52,7 @@ async def list_menu_items(
         ]
 
     cursor = menu.find(query).sort([("category", 1), ("name", 1)])
-    items = await cursor.to_list(length=1000)
+    items = await cursor.to_list(length=5000)
     return {"items": [_serialize_menu_item(i) for i in items]}
 
 

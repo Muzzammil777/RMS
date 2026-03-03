@@ -209,7 +209,7 @@ export function ReportsAnalytics() {
       csvRows.push('');
 
       csvRows.push('"STAFF PERFORMANCE"');
-      csvRows.push('"Rank","Name","Role","Orders Handled","Avg Service Time","Rating","Attendance","Score"');
+      csvRows.push('"Rank","Name","Role","Orders Handled","Avg Service Time","Attendance","Score"');
       staffPerformance.forEach((staff: any, index: number) => {
         csvRows.push([
           escapeCsvCell(index + 1),
@@ -217,7 +217,6 @@ export function ReportsAnalytics() {
           escapeCsvCell(staff.role ?? ''),
           escapeCsvCell(staff.orders_handled ?? 0),
           escapeCsvCell(staff.avg_service_time ?? ''),
-          escapeCsvCell(staff.rating ?? ''),
           escapeCsvCell(staff.attendance ?? ''),
           escapeCsvCell(staff.performance_score ?? ''),
         ].join(','));
@@ -507,20 +506,20 @@ export function ReportsAnalytics() {
                         <TableCell>{item.orders}</TableCell>
                         <TableCell>{item.revenue > 0 ? `INR ${item.revenue.toLocaleString('en-IN')}` : '-'}</TableCell>
                         <TableCell>
-                          {item.trend !== 0 ? (
-                            item.trend > 0 ? (
-                              <Badge className="bg-green-500">
-                                <TrendingUp className="h-3 w-3 mr-1" />
-                                {item.trend}%
-                              </Badge>
-                            ) : (
-                              <Badge className="bg-red-500">
-                                <TrendingDown className="h-3 w-3 mr-1" />
-                                {Math.abs(item.trend)}%
-                              </Badge>
-                            )
+                          {item.trend > 0 ? (
+                            <Badge className="bg-green-500">
+                              <TrendingUp className="h-3 w-3 mr-1" />
+                              {item.trend}%
+                            </Badge>
+                          ) : item.trend < 0 ? (
+                            <Badge className="bg-red-500">
+                              <TrendingDown className="h-3 w-3 mr-1" />
+                              {Math.abs(item.trend)}%
+                            </Badge>
                           ) : (
-                            <span className="text-xs text-muted-foreground">-</span>
+                            <Badge variant="outline" className="bg-gray-100 text-gray-600 border-gray-300">
+                              0%
+                            </Badge>
                           )}
                         </TableCell>
                         <TableCell className="text-right">
@@ -657,7 +656,6 @@ export function ReportsAnalytics() {
                       <TableHead>Role</TableHead>
                       <TableHead>Orders Handled</TableHead>
                       <TableHead>Avg. Service Time</TableHead>
-                      <TableHead>Rating</TableHead>
                       <TableHead>Attendance</TableHead>
                       <TableHead className="text-right">Score</TableHead>
                     </TableRow>
@@ -678,16 +676,6 @@ export function ReportsAnalytics() {
                         </TableCell>
                         <TableCell>{staff.orders_handled ?? 0}</TableCell>
                         <TableCell>{staff.avg_service_time ?? '-'}</TableCell>
-                        <TableCell>
-                          {staff.rating ? (
-                            <div className="flex items-center gap-1">
-                              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                              <span>{staff.rating}</span>
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">-</span>
-                          )}
-                        </TableCell>
                         <TableCell>
                           {staff.attendance && staff.attendance !== '-' ? (
                             <Badge className={staff.attendance === '100%' ? 'bg-green-500' : 'bg-blue-500'}>

@@ -389,7 +389,7 @@ export function NotificationManagement() {
     if (!silent) setLoading(true);
     else setRefreshing(true);
     try {
-      const result = await notificationsApi.list();
+      const result = await notificationsApi.list({ limit: 500 });
       const data = result.data || [];
       setNotifications(Array.isArray(data) ? data : []);
     } catch {

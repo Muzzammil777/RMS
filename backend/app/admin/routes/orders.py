@@ -123,7 +123,7 @@ async def list_orders(
     waiter_id: Optional[str] = None,
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
-    limit: int = Query(100, le=500),
+    limit: int = Query(200, le=500),
     skip: int = 0,
 ):
     """Get all orders with optional filters"""
@@ -137,11 +137,10 @@ async def list_orders(
     if table:
         query["tableNumber"] = table
     if waiter_id and waiter_id != "all":
-        # Include the waiter's own orders AND client orders (source="client" or no waiterId)
+        # Only the waiter's own orders and all client-placed orders
         query["$or"] = [
             {"waiterId": waiter_id},
             {"source": "client"},
-            {"waiterId": {"$exists": False}},
         ]
     if date_from:
         query["createdAt"] = {"$gte": datetime.fromisoformat(date_from)}

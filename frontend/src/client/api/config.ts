@@ -5,8 +5,9 @@
  */
 
 function getAdminApiBaseUrl(): string {
+  if (!import.meta.env.PROD) return '/api/admin';
   const raw = import.meta.env.VITE_API_URL as string | undefined;
-  const base = (raw && raw.trim().length > 0 ? raw.trim() : "http://localhost:8000").replace(/\/+$/, "");
+  const base = (raw && raw.trim().length > 0 ? raw.trim() : "").replace(/\/+$/, "");
   return `${base}/api/admin`;
 }
 

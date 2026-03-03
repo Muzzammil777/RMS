@@ -50,6 +50,7 @@ interface Order {
   source?: string;        // 'client' = placed by customer; absent/other = admin/staff
   orderNumber?: string;
   billingId?: string;     // For linking to billing entry
+  paymentStatus?: string; // 'paid' | 'unpaid' | 'pending'
 }
 
 interface BillItem {
@@ -121,6 +122,7 @@ export function BillingPayment() {
     total: o.total || o.totalAmount || 0,
     status: o.status,
     source: o.source,
+    paymentStatus: o.paymentStatus,
   });
 
   const fetchOrders = async () => {
@@ -148,14 +150,23 @@ export function BillingPayment() {
       // Exclude orders placed by the customer via the client app
       const adminOnly = unique.filter((o: any) => o.source !== 'client');
 
+      // Exclude orders that are already paid (they should only appear in Invoices tab)
+      const unpaidOnly = adminOnly.filter((o: any) => o.paymentStatus !== 'paid');
+
+      // Exclude takeaway orders (they are paid immediately via Quick Order POS and appear only in Invoices)
+      const dineInOnly = unpaidOnly.filter((o: any) => {
+        const orderType = o.type || o.orderType || o.order_type || '';
+        return orderType.toLowerCase() !== 'takeaway';
+      });
+
       // bill_requested first, then served
-      adminOnly.sort((a: any, b: any) => {
+      dineInOnly.sort((a: any, b: any) => {
         if (a.status === 'bill_requested' && b.status !== 'bill_requested') return -1;
         if (a.status !== 'bill_requested' && b.status === 'bill_requested') return 1;
         return 0;
       });
 
-      setOrders(adminOnly.map(normalizeOrder));
+      setOrders(dineInOnly.map(normalizeOrder));
     } catch (error) {
       console.error('Error fetching orders:', error);
       toast.error('Failed to load orders');
@@ -258,6 +269,19 @@ export function BillingPayment() {
       toast.error('Please add items to the bill');
       return;
     }
+    
+    // Prevent generating invoice for takeaway orders (they are paid via Quick Order POS)
+    if (selectedOrder?.order_type === 'takeaway') {
+      toast.error('Takeaway orders should be paid via Quick Order POS, not through bill generation.');
+      return;
+    }
+    
+    // Prevent generating invoice for already-paid orders (e.g., takeaway with payment already done)
+    if (selectedOrder?.paymentStatus === 'paid') {
+      toast.error('This order has already been paid. Check the Invoices tab.');
+      return;
+    }
+    
     setIsGenerating(true);
 
     const totals = calculateTotals();

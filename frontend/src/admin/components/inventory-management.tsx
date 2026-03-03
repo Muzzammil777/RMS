@@ -218,7 +218,9 @@ export function InventoryManagement({ triggerStockManagement }: { triggerStockMa
   useEffect(() => {
     const fetchIngredients = async () => {
       try {
-        const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api/admin';
+        const API_URL = import.meta.env.PROD
+          ? (import.meta.env.VITE_API_URL || '') + '/api/admin'
+          : '/api/admin';
         const response = await fetch(`${API_URL}/inventory`);
         if (response.ok) {
           const result = await response.json();

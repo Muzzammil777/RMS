@@ -18,11 +18,12 @@ import {
   Timer, TrendingUp, Package
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { tablesApi, ordersApi } from '@/admin/utils/api';
+import { tablesApi, ordersApi, menuApi } from '@/admin/utils/api';
 import { API_BASE_URL } from '@/admin/utils/supabase/info';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/admin/components/ui/dialog';
 import { restaurantState } from '@/admin/services/restaurant-state';
 import { useAuth } from '@/admin/utils/auth-context';
+import { PaymentDialog } from '@/admin/components/payment-dialog';
 import { Switch } from '@/admin/components/ui/switch';
 import { Progress } from '@/admin/components/ui/progress';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -166,6 +167,12 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated, initialTable
   const [orderType, setOrderType] = useState<'dine-in' | 'takeaway'>('dine-in');
   const [tableNumber, setTableNumber] = useState('');
   const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+
+  // Takeaway payment flow
+  const [takeawayPaymentOpen, setTakeawayPaymentOpen] = useState(false);
+  const [createdOrderId, setCreatedOrderId] = useState('');
+  const [createdOrderTotal, setCreatedOrderTotal] = useState(0);
   const [availableTables, setAvailableTables] = useState<TableData[]>([]);
   const [tablesLoading, setTablesLoading] = useState(false);
 
@@ -446,69 +453,69 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated, initialTable
       let comboFetched = false;
 
       try {
-        const menuResponse = await fetch(
-          `${API_BASE_URL}/menu`,
-        );
-
-        if (menuResponse.ok) {
-          const menuResult = await menuResponse.json();
-          // Handle both array response and {success, data} format
-          const menuData = Array.isArray(menuResult) ? menuResult : (menuResult.data || []);
-          if (menuData.length > 0) {
-            // Map _id to id for frontend compatibility
-            const availableItems = menuData
-              .filter((item: MenuItem) => item.available !== false)
-              .map((item: any) => ({
-                ...item,
-                id: item._id || item.id,
-              }));
-            setMenuItems(availableItems);
-            menuFetched = true;
-          }
-        }
+        const menuResult: any = await menuApi.list();
+        console.log('📋 Menu API Response:', menuResult);
+        
+        // Handle both array response and {success, data} format
+        const menuData = Array.isArray(menuResult) ? menuResult : (menuResult.data || []);
+        console.log('📋 Menu items count:', menuData.length);
+        
+        // Map _id to id for frontend compatibility
+        const availableItems = menuData
+          .filter((item: MenuItem) => item.available !== false)
+          .map((item: any) => ({
+            ...item,
+            id: item._id || item.id,
+          }));
+        setMenuItems(availableItems);
+        menuFetched = true;
+        console.log('✅ Loaded', availableItems.length, 'menu items from API');
       } catch (menuError) {
-        console.log('Menu API not available, using mock data');
+        console.error('❌ Menu API error:', menuError);
+        console.log('Using mock data');
       }
 
       try {
-        const comboResponse = await fetch(
-          `${API_BASE_URL}/menu/combos`,
-        );
-
-        if (comboResponse.ok) {
-          const comboResult = await comboResponse.json();
-          // Handle both array response and {success, data} format
-          const comboData = Array.isArray(comboResult) ? comboResult : (comboResult.data || []);
-          if (comboData.length >= 0) {
-            // Map _id to id for frontend compatibility and normalize prices
-            const availableCombos = comboData
-              .filter((combo: ComboMeal) => combo.available !== false)
-              .map((combo: any) => ({
-                ...combo,
-                id: combo._id || combo.id,
-                items: combo.items || [],
-                originalPrice: Number(combo.originalPrice) || Number(combo.discountedPrice) || Number(combo.price) || 0,
-                discountedPrice: Number(combo.discountedPrice) || Number(combo.price) || Number(combo.originalPrice) || 0,
-              }));
-            setComboMeals(availableCombos);
-            comboFetched = true;
-          }
-        }
+        const comboResult: any = await menuApi.listCombos();
+        console.log('🍱 Combo API Response:', comboResult);
+        
+        // Handle both array response and {success, data} format
+        const comboData = Array.isArray(comboResult) ? comboResult : (comboResult.data || []);
+        console.log('🍱 Combo count:', comboData.length);
+        
+        // Map _id to id for frontend compatibility and normalize prices
+        const availableCombos = comboData
+          .filter((combo: ComboMeal) => combo.available !== false)
+          .map((combo: any) => ({
+            ...combo,
+            id: combo._id || combo.id,
+            items: combo.items || [],
+            originalPrice: Number(combo.originalPrice) || Number(combo.discountedPrice) || Number(combo.price) || 0,
+            discountedPrice: Number(combo.discountedPrice) || Number(combo.price) || Number(combo.originalPrice) || 0,
+          }));
+        setComboMeals(availableCombos);
+        comboFetched = true;
+        console.log('✅ Loaded', availableCombos.length, 'combo meals from API');
       } catch (comboError) {
-        console.log('Combo API not available, using mock data');
+        console.error('❌ Combo API error:', comboError);
+        console.log('Using mock combo data');
       }
 
       // Use mock data if API fetch failed
       if (!menuFetched) {
+        console.warn('⚠️ Using mock menu data (8 items) - API fetch failed or unavailable');
         setMenuItems(mockMenuItems);
       }
       if (!comboFetched) {
+        console.warn('⚠️ Using mock combo data - API fetch failed or unavailable');
         setComboMeals(mockCombos);
       }
 
       // Feature #7: Menu Sync - Show sync badge
       if (menuFetched && comboFetched) {
         toast.success('✓ Menu synced', { duration: 2000 });
+      } else if (menuFetched || comboFetched) {
+        toast.info('Partial menu sync - check console for details', { duration: 3000 });
       }
 
     } catch (error) {
@@ -806,13 +813,16 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated, initialTable
   // Feature #9: Order Flow Restriction - Validation
   const isOrderValid =
     orderItems.length > 0 &&
-    (orderType === 'takeaway' || (orderType === 'dine-in' && tableNumber));
+    (orderType === 'takeaway'
+      ? (customerName.trim().length > 0 && customerPhone.trim().length > 0)
+      : (orderType === 'dine-in' && !!tableNumber));
 
   // Reset form
   const resetForm = () => {
     setOrderType('dine-in');
     setTableNumber('');
     setCustomerName('');
+    setCustomerPhone('');
     setOrderItems([]);
     setNotes('');
     setTags([]);
@@ -855,6 +865,7 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated, initialTable
         type: orderType,
         tableNumber: orderType === 'dine-in' ? tableNumber : undefined,
         customerName: customerName || undefined,
+        customerPhone: customerPhone || undefined,
         items: orderItems.map((item) => ({
           name: item.name,
           quantity: item.quantity,
@@ -896,13 +907,22 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated, initialTable
             }
           }
         }
-        
-        toast.success(existingOrderId ? '✅ Order updated successfully!' : '🎉 Order created successfully!', { duration: 3000 });
-        playSound('complete', soundEnabled);
-        
+
         onOrderCreated();
-        resetForm();
-        onOpenChange(false);
+        playSound('complete', soundEnabled);
+
+        // For takeaway orders open payment dialog immediately
+        if (!existingOrderId && orderType === 'takeaway') {
+          const orderId = result.id || result._id || '';
+          setCreatedOrderId(orderId);
+          setCreatedOrderTotal(subtotal);
+          setTakeawayPaymentOpen(true);
+          toast.success('🎉 Takeaway order created! Collect payment.', { duration: 3000 });
+        } else {
+          toast.success(existingOrderId ? '✅ Order updated successfully!' : '🎉 Order created successfully!', { duration: 3000 });
+          resetForm();
+          onOpenChange(false);
+        }
       } else {
         throw new Error(result.detail || (existingOrderId ? 'Failed to update order' : 'Failed to create order'));
       }
@@ -1082,15 +1102,31 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated, initialTable
                   {/* Customer Name */}
                   <div className="space-y-2">
                     <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
-                      Customer Name
+                      Customer Name {orderType === 'takeaway' && <span className="text-red-500">*</span>}
                     </Label>
                     <Input
-                      placeholder="Optional"
+                      placeholder={orderType === 'takeaway' ? 'Required for takeaway' : 'Optional'}
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
                       className="h-12 border-2"
                     />
                   </div>
+
+                  {/* Phone Number (required for takeaway) */}
+                  {orderType === 'takeaway' && (
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
+                        Phone Number <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        placeholder="e.g. 9876543210"
+                        value={customerPhone}
+                        onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                        inputMode="numeric"
+                        className="h-12 border-2"
+                      />
+                    </div>
+                  )}
 
                   {/* Progressive Disclosure: Special Instructions */}
                   {!showSpecialInstructions ? (
@@ -1570,86 +1606,8 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated, initialTable
               </Card>
             </div>
 
-            {/* RIGHT PANEL: Live Order Preview + Timeline */}
+            {/* RIGHT PANEL: Live Order Preview */}
             <div className="lg:col-span-5 space-y-6">
-              {/* Feature #1: Live Order Timeline */}
-              <Card className="shadow-md border-2 border-[#8B5E34]/10">
-                <CardHeader className="bg-gradient-to-r from-[#F6F2ED] to-white pb-4">
-                  <CardTitle className="text-lg flex items-center gap-2 text-[#8B5E34]">
-                    <Timer className="h-5 w-5" />
-                    Order Timeline
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <div className="space-y-4">
-                    {/* Progress Bar */}
-                    <div className="relative">
-                      <div className="flex justify-between mb-2">
-                        {ORDER_STATUSES.map((status) => {
-                          const statusIndex = ORDER_STATUSES.indexOf(status);
-                          const currentIndex = ORDER_STATUSES.indexOf(currentStatus);
-                          const isActive = statusIndex <= currentIndex;
-                          
-                          return (
-                            <div key={status} className="flex flex-col items-center">
-                              <div
-                                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
-                                  isActive
-                                    ? STATUS_COLORS[status] + ' text-white scale-110'
-                                    : 'bg-gray-200 text-gray-400'
-                                }`}
-                              >
-                                {isActive && <CheckCircle className="h-5 w-5" />}
-                              </div>
-                              <span className="text-xs mt-1 capitalize">{status}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      
-                      <Progress
-                        value={(ORDER_STATUSES.indexOf(currentStatus) / (ORDER_STATUSES.length - 1)) * 100}
-                        className="h-2"
-                      />
-                    </div>
-
-                    {/* Feature #2: Bottleneck Detection */}
-                    {isBottleneck && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-red-50 border-2 border-red-200 rounded-lg p-3 flex items-center gap-3"
-                      >
-                        <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0" />
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold text-red-900">
-                            Bottleneck Detected
-                          </p>
-                          <p className="text-xs text-red-700">
-                            Order has been in preparing for {preparingDuration} minutes
-                          </p>
-                        </div>
-                      </motion.div>
-                    )}
-
-                    {/* Timeline Details */}
-                    <div className="space-y-2">
-                      {orderTimeline.map((tl, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-center justify-between text-sm p-2 bg-gray-50 rounded"
-                        >
-                          <span className="capitalize font-medium">{tl.status}</span>
-                          <span className="text-muted-foreground text-xs">
-                            {tl.timestamp.toLocaleTimeString()}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
               {/* Order Preview Card */}
               <Card className="shadow-md border-2 border-[#8B5E34]/10 flex-1 flex flex-col">
                 <CardHeader className="bg-gradient-to-r from-[#F6F2ED] to-white pb-4">
@@ -1787,14 +1745,6 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated, initialTable
                     </ScrollArea>
                   )}
 
-                  {/* Feature #5: Drag Gesture Hint */}
-                  {orderItems.length > 0 && (
-                    <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-center">
-                      <p className="text-xs text-blue-900">
-                        💡 Swipe right to advance status, left to cancel
-                      </p>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             </div>
@@ -1832,10 +1782,14 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated, initialTable
                 }`}
               >
                 <CheckCircle className="h-5 w-5 mr-2" />
-                {existingOrderId ? 'Update Order' : 'Create Order'}
+                {existingOrderId ? 'Update Order' : (orderType === 'takeaway' ? 'Create & Pay' : 'Create Order')}
                 {!isOrderValid && (
                   <span className="ml-2 text-xs">
-                    ({orderItems.length === 0 ? 'Add items' : 'Select table'})
+                    ({orderItems.length === 0
+                      ? 'Add items'
+                      : orderType === 'takeaway'
+                        ? 'Name & phone required'
+                        : 'Select table'})
                   </span>
                 )}
               </Button>
@@ -1843,6 +1797,24 @@ export function QuickOrderPOS({ open, onOpenChange, onOrderCreated, initialTable
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Takeaway Payment Dialog */}
+      <PaymentDialog
+        open={takeawayPaymentOpen}
+        onOpenChange={(o) => {
+          setTakeawayPaymentOpen(o);
+          if (!o) { resetForm(); onOpenChange(false); }
+        }}
+        orderId={createdOrderId}
+        amount={createdOrderTotal}
+        customerName={customerName}
+        customerPhone={customerPhone}
+        onSuccess={() => {
+          setTakeawayPaymentOpen(false);
+          resetForm();
+          onOpenChange(false);
+        }}
+      />
 
       {/* Feature #4: Rollback Protection Dialog */}
       <Dialog open={rollbackDialog} onOpenChange={setRollbackDialog}>

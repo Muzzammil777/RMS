@@ -7,12 +7,19 @@ Billing & Payment Routes
 
 from fastapi import APIRouter, HTTPException, Query
 from typing import Optional, List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from bson import ObjectId
 from ...db import get_db
 from ...audit import log_audit
 
 router = APIRouter(tags=["Billing"])
+
+# IST timezone (UTC+5:30)
+IST = timezone(timedelta(hours=5, minutes=30))
+
+def get_ist_now():
+    """Get current time in IST timezone"""
+    return datetime.now(IST).replace(tzinfo=None)
 
 
 def serialize_doc(doc):
@@ -86,7 +93,7 @@ async def process_order_payment(data: dict):
     # Create payment record
     count = await db.payments.count_documents({})
     payment_data = {
-        "transactionId": f"TXN-{datetime.utcnow().strftime('%Y%m%d')}-{count + 1001}",
+        "transactionId": f"TXN-{get_ist_now().strftime('%Y%m%d')}-{count + 1001}",
         "billingId": billing_id,
         "orderId": billing.get("orderId"),
         "orderNumber": billing.get("orderNumber"),
@@ -97,7 +104,7 @@ async def process_order_payment(data: dict):
         "totalAmount": amount + tips,
         "method": payment_method,
         "status": "completed",
-        "createdAt": datetime.utcnow(),
+        "createdAt": get_ist_now(),
     }
     
     payment_result = await db.payments.insert_one(payment_data)
@@ -109,7 +116,7 @@ async def process_order_payment(data: dict):
             "status": "paid",
             "paymentId": str(payment_result.inserted_id),
             "paymentMethod": payment_method,
-            "paidAt": datetime.utcnow().isoformat() + 'Z',
+            "paidAt": get_ist_now().isoformat() + 'Z',
             "paidAmount": amount,
             "tips": tips,
         }}
@@ -123,8 +130,8 @@ async def process_order_payment(data: dict):
                 "status": "completed",
                 "paymentStatus": "paid",
                 "paymentMethod": payment_method,
-                "paidAt": datetime.utcnow().isoformat() + 'Z',
-                "completedAt": datetime.utcnow().isoformat() + 'Z'
+                "paidAt": get_ist_now().isoformat() + 'Z',
+                "completedAt": get_ist_now().isoformat() + 'Z'
             }}
         )
     
@@ -182,7 +189,7 @@ async def get_payment_stats():
     """Get payment statistics"""
     db = get_db()
     
-    today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today = get_ist_now().replace(hour=0, minute=0, second=0, microsecond=0)
     week_ago = today - timedelta(days=7)
     month_start = today.replace(day=1)
     
@@ -251,8 +258,8 @@ async def create_payment(data: dict):
     
     # Generate transaction ID
     count = await db.payments.count_documents({})
-    data["transactionId"] = f"TXN-{datetime.utcnow().strftime('%Y%m%d')}-{count + 1001}"
-    data["createdAt"] = datetime.utcnow()
+    data["transactionId"] = f"TXN-{get_ist_now().strftime('%Y%m%d')}-{count + 1001}"
+    data["createdAt"] = get_ist_now()
     data["status"] = data.get("status", "completed")
     
     result = await db.payments.insert_one(data)
@@ -267,12 +274,12 @@ async def create_payment(data: dict):
                 {"$set": {
                     "paymentStatus": "paid",
                     "paymentMethod": data.get("method"),
-                    "paidAt": datetime.utcnow()
+                    "paidAt": get_ist_now()
                 }}
             )
         elif data["status"] == "failed":
             # Reserve order for 15 minutes and notify customer
-            reservation_expires = datetime.utcnow() + timedelta(minutes=15)
+            reservation_expires = get_ist_now() + timedelta(minutes=15)
             order = await db.orders.find_one({"_id": ObjectId(data["orderId"])})
             
             await db.orders.update_one(
@@ -299,7 +306,7 @@ async def create_payment(data: dict):
                 "orderId": data["orderId"],
                 "paymentId": str(result.inserted_id),
                 "expiresAt": reservation_expires,
-                "created_at": datetime.utcnow(),
+                "created_at": get_ist_now(),
             })
     
     await log_audit("create", "payment", str(result.inserted_id), {
@@ -321,7 +328,7 @@ async def update_payment_status(payment_id: str, status: str):
     
     result = await db.payments.update_one(
         {"_id": ObjectId(payment_id)},
-        {"$set": {"status": status, "updatedAt": datetime.utcnow()}}
+        {"$set": {"status": status, "updatedAt": get_ist_now()}}
     )
     
     if result.matched_count == 0:
@@ -352,24 +359,24 @@ async def retry_payment(payment_id: str, method: Optional[str] = None):
         
         # Check if reservation expired
         reserved_until = order.get("reservedUntil")
-        if reserved_until and datetime.utcnow() > reserved_until:
+        if reserved_until and get_ist_now() > reserved_until:
             # Cancel the order
             await db.orders.update_one(
                 {"_id": ObjectId(order_id)},
-                {"$set": {"status": "cancelled", "cancelledAt": datetime.utcnow(), "cancelReason": "Payment timeout"}}
+                {"$set": {"status": "cancelled", "cancelledAt": get_ist_now(), "cancelReason": "Payment timeout"}}
             )
             raise HTTPException(status_code=400, detail="Order reservation expired. Order has been cancelled.")
     
     # Create new payment attempt
     count = await db.payments.count_documents({})
     new_payment = {
-        "transactionId": f"TXN-{datetime.utcnow().strftime('%Y%m%d')}-{count + 1001}",
+        "transactionId": f"TXN-{get_ist_now().strftime('%Y%m%d')}-{count + 1001}",
         "orderId": order_id,
         "amount": payment.get("amount"),
         "method": method or payment.get("method"),
         "status": "pending",
         "retryOf": payment_id,
-        "createdAt": datetime.utcnow()
+        "createdAt": get_ist_now()
     }
     
     result = await db.payments.insert_one(new_payment)
@@ -399,7 +406,7 @@ async def refund_payment(payment_id: str, amount: Optional[float] = None, reason
         {"_id": ObjectId(payment_id)},
         {"$set": {
             "status": "refunded",
-            "refundedAt": datetime.utcnow(),
+            "refundedAt": get_ist_now(),
             "refundAmount": refund_amount,
             "refundReason": reason
         }}
@@ -408,14 +415,14 @@ async def refund_payment(payment_id: str, amount: Optional[float] = None, reason
     # Create refund record
     count = await db.payments.count_documents({})
     refund_record = {
-        "transactionId": f"REF-{datetime.utcnow().strftime('%Y%m%d')}-{count + 1}",
+        "transactionId": f"REF-{get_ist_now().strftime('%Y%m%d')}-{count + 1}",
         "originalPaymentId": payment_id,
         "amount": -refund_amount,
         "method": payment.get("method"),
         "type": "refund",
         "status": "completed",
         "reason": reason,
-        "createdAt": datetime.utcnow()
+        "createdAt": get_ist_now()
     }
     await db.payments.insert_one(refund_record)
     
@@ -455,8 +462,10 @@ async def create_invoice(data: dict):
     
     # Generate invoice number
     count = await db.invoices.count_documents({})
-    data["invoiceNumber"] = f"INV-{datetime.utcnow().strftime('%Y%m%d')}-{count + 1001}"
-    now = datetime.utcnow()
+    data["invoiceNumber"] = f"INV-{get_ist_now().strftime('%Y%m%d')}-{count + 1001}"
+    
+    # Use current time for when invoice is actually generated
+    now = get_ist_now()
     data["createdAt"] = now
     data["generatedAt"] = now.isoformat() + "Z"
     # generatedBy is passed from the frontend; default to 'Admin' if missing
@@ -501,7 +510,7 @@ async def update_tax_settings(data: dict):
         {"$set": {
             "key": "tax_settings",
             "value": data,
-            "updatedAt": datetime.utcnow()
+            "updatedAt": get_ist_now()
         }},
         upsert=True
     )
@@ -521,7 +530,7 @@ async def get_daily_report(date: Optional[str] = None):
     if date:
         start = datetime.fromisoformat(date)
     else:
-        start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        start = get_ist_now().replace(hour=0, minute=0, second=0, microsecond=0)
     
     end = start + timedelta(days=1)
     
@@ -581,8 +590,13 @@ async def process_order_payment(data: dict):
     if not order_id or not amount:
         raise HTTPException(status_code=400, detail="orderId and amount are required")
     
-    # Get order details
-    order = await db.orders.find_one({"_id": ObjectId(order_id)})
+    # Get order details — support both custom string id (ORD-...) and ObjectId
+    order = await db.orders.find_one({"id": order_id})
+    if not order:
+        try:
+            order = await db.orders.find_one({"_id": ObjectId(order_id)})
+        except Exception:
+            pass
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     
@@ -592,7 +606,7 @@ async def process_order_payment(data: dict):
     
     # Generate transaction ID
     count = await db.payments.count_documents({})
-    transaction_id = f"TXN-{datetime.utcnow().strftime('%Y%m%d')}-{count + 1001}"
+    transaction_id = f"TXN-{get_ist_now().strftime('%Y%m%d')}-{count + 1001}"
     
     # Create payment record
     payment_data = {
@@ -605,32 +619,72 @@ async def process_order_payment(data: dict):
         "total": amount + tips,
         "method": method,
         "status": "completed",
-        "createdAt": datetime.utcnow()
+        "createdAt": get_ist_now()
     }
     
     result = await db.payments.insert_one(payment_data)
     
-    # Update order payment status
+    # Update order payment status (use the _id from the fetched order document)
     await db.orders.update_one(
-        {"_id": ObjectId(order_id)},
+        {"_id": order["_id"]},
         {"$set": {
             "paymentStatus": "paid",
             "paymentMethod": method,
-            "paidAt": datetime.utcnow(),
+            "paidAt": get_ist_now(),
             "paymentId": str(result.inserted_id)
         }}
     )
     
+    # Create invoice record so it appears in the billing Invoices tab
+    inv_count = await db.invoices.count_documents({})
+    invoice_number = f"INV-{get_ist_now().strftime('%Y%m%d')}-{inv_count + 1001}"
+    items = order.get("items", [])
+    subtotal = sum(
+        float(i.get("price", 0)) * int(i.get("quantity", 1))
+        for i in items
+    )
+    
+    # Use current time for when the invoice/payment was actually processed
+    invoice_time = get_ist_now()
+    
+    invoice_data = {
+        "invoiceNumber": invoice_number,
+        "orderId": order_id,
+        "orderNumber": order.get("orderNumber") or order.get("id"),
+        "tableNumber": order.get("tableNumber") or order.get("table"),
+        "customerName": order.get("customerName") or order.get("customer_name") or "Walk-in Customer",
+        "customerPhone": order.get("customerPhone") or order.get("phone", ""),
+        "orderType": order.get("orderType") or order.get("type", "takeaway"),
+        "items": items,
+        "subtotal": subtotal,
+        "taxPercent": 0,
+        "taxAmount": 0,
+        "discountType": "fixed",
+        "discountValue": 0,
+        "discountAmount": 0,
+        "grandTotal": amount,
+        "paymentMethod": method,
+        "transactionId": transaction_id,
+        "status": "paid",
+        "source": order.get("source", "admin"),
+        "generatedBy": "System",
+        "createdAt": invoice_time,
+        "generatedAt": invoice_time.isoformat() + "Z",
+    }
+    await db.invoices.insert_one(invoice_data)
+
     await log_audit("payment", "order", order_id, {
         "amount": amount,
         "method": method,
-        "transactionId": transaction_id
+        "transactionId": transaction_id,
+        "invoiceNumber": invoice_number
     })
     
     return {
         "success": True,
         "paymentId": str(result.inserted_id),
         "transactionId": transaction_id,
+        "invoiceNumber": invoice_number,
         "amount": amount,
         "method": method
     }
@@ -675,8 +729,8 @@ async def checkout_order(data: dict):
         {"_id": ObjectId(order_id)},
         {"$set": {
             "status": "completed",
-            "statusUpdatedAt": datetime.utcnow(),
-            "completedAt": datetime.utcnow()
+            "statusUpdatedAt": get_ist_now(),
+            "completedAt": get_ist_now()
         }}
     )
     
@@ -689,3 +743,4 @@ async def checkout_order(data: dict):
         "message": "Order completed and paid",
         "payment": payment_result
     }
+

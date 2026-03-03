@@ -129,15 +129,42 @@ async def get_analytics():
 
     avg_order_value = round(total_revenue / completed_orders, 2) if completed_orders > 0 else 0.0
 
-    # Popular items with revenue
+    # Popular items with revenue and prep time
     popular_map = {}
+    item_prep_times = {}  # Track prep times for each item
+    
     for order in all_orders:
+        # Calculate prep time for this order
+        prep_time = None
+        if normalize_status(order.get("status")) in ["completed", "delivered"]:
+            created_at = get_order_datetime(order)
+            completed_at = parse_datetime(order.get("completedAt") or order.get("completed_at"))
+            
+            if created_at and completed_at:
+                prep_time_mins = (completed_at - created_at).total_seconds() / 60
+                if 0 < prep_time_mins < 300:  # Sanity check: between 0 and 5 hours
+                    prep_time = prep_time_mins
+        
         for item in extract_items(order):
             key = item["name"]
             if key not in popular_map:
                 popular_map[key] = {"name": key, "count": 0, "revenue": 0.0}
+                item_prep_times[key] = []
+            
             popular_map[key]["count"] += item["quantity"]
             popular_map[key]["revenue"] += item["price"] * item["quantity"]
+            
+            # Add prep time if available
+            if prep_time is not None:
+                item_prep_times[key].append(prep_time)
+    
+    # Calculate average prep time for each item
+    for key, data in popular_map.items():
+        prep_times = item_prep_times.get(key, [])
+        if prep_times:
+            data["avgPrepTime"] = round(sum(prep_times) / len(prep_times))
+        else:
+            data["avgPrepTime"] = 0
 
     popular_items = sorted(popular_map.values(), key=lambda item: item["count"], reverse=True)[:10]
 
@@ -303,10 +330,12 @@ async def get_weekly_analytics(days: int = 7):
     top_items = sorted(current_item_counts.items(), key=lambda row: row[1], reverse=True)[:10]
 
     def trend(item_name, curr_count):
-        prev = prev_counts.get(str(item_name), 0)
+        prev = prev_counts.get(item_name, 0)
         if prev == 0:
-            return 0
-        return round(((curr_count - prev) / prev) * 100)
+            # New item - return high positive value to indicate growth
+            return 100 if curr_count > 0 else 0
+        change = ((curr_count - prev) / prev) * 100
+        return round(change)
 
     return {
         "startDate": week_start.isoformat()[:10],
@@ -323,51 +352,54 @@ async def get_weekly_analytics(days: int = 7):
 
 @router.get("/staff-performance")
 async def get_staff_performance():
-    """Get staff performance analytics derived from staff and performance logs"""
+    """Get staff performance analytics derived from actual orders and attendance"""
     db = get_db()
 
     # Get all staff (default include active unless explicitly false)
     staff_docs = await db.staff.find({}).to_list(1000)
     staff_list = [s for s in staff_docs if s.get("active", True) is not False]
 
-    # Performance logs can be legacy fields (rating/ordersHandled/serviceTimeMins)
-    # or metric/value records from staff module.
-    perf_logs = await db.performance_logs.find({}).to_list(10000)
+    # Fetch all completed orders to calculate orders handled and service time
+    all_orders = await db.orders.find({}).to_list(50000)
+    
+    # Build performance map from actual order data
     perf_map = {}
-    for log in perf_logs:
-        sid = str(log.get("staffId") or "").strip()
+    for order in all_orders:
+        # Get waiter ID from order
+        waiter_id = order.get("waiterId") or order.get("waiter_id") or order.get("assignedWaiter")
+        if not waiter_id:
+            continue
+            
+        sid = str(waiter_id).strip()
         if not sid:
             continue
+            
         if sid not in perf_map:
             perf_map[sid] = {
                 "orders_total": 0,
-                "ratings": [],
                 "service_times": [],
+                "ratings": [],
             }
+        
+        # Count orders handled
+        perf_map[sid]["orders_total"] += 1
+        
+        # Calculate service time (from creation to completion)
+        if normalize_status(order.get("status")) == "completed":
+            created_at = get_order_datetime(order)
+            completed_at = parse_datetime(order.get("completedAt") or order.get("completed_at"))
+            
+            if created_at and completed_at:
+                service_time_mins = (completed_at - created_at).total_seconds() / 60
+                if service_time_mins > 0 and service_time_mins < 300:  # Cap at 5 hours (sanity check)
+                    perf_map[sid]["service_times"].append(service_time_mins)
+        
+        # Check for customer rating in order
+        rating = to_number(order.get("rating") or order.get("customerRating"), None)
+        if rating is not None and 0 <= rating <= 5:
+            perf_map[sid]["ratings"].append(rating)
 
-        metric = str(log.get("metric") or "").strip().lower()
-        value = to_number(log.get("value"), None)
-
-        if value is not None:
-            if metric in {"orders", "orders_handled", "ordershandled"}:
-                perf_map[sid]["orders_total"] += int(value)
-            elif metric in {"rating", "customer_rating", "performance_rating"}:
-                perf_map[sid]["ratings"].append(value)
-            elif metric in {"service_time", "service_time_mins", "avg_service_time", "servicetimemins"}:
-                perf_map[sid]["service_times"].append(value)
-
-        legacy_orders = to_number(log.get("ordersHandled"), None)
-        if legacy_orders is not None:
-            perf_map[sid]["orders_total"] += int(legacy_orders)
-
-        legacy_rating = to_number(log.get("rating"), None)
-        if legacy_rating is not None:
-            perf_map[sid]["ratings"].append(legacy_rating)
-
-        legacy_service = to_number(log.get("serviceTimeMins"), None)
-        if legacy_service is not None:
-            perf_map[sid]["service_times"].append(legacy_service)
-
+    # Get attendance data
     attendance_docs = await db.attendance.find({}).to_list(10000)
     att_map = {}
     for row in attendance_docs:
@@ -380,17 +412,30 @@ async def get_staff_performance():
         if normalize_status(row.get("status")) == "present":
             att_map[sid]["present"] += 1
 
+    # Build results for each staff member
     results = []
     for s in staff_list:
         sid = str(s["_id"])
         perf = perf_map.get(sid, {"orders_total": 0, "ratings": [], "service_times": []})
         att = att_map.get(sid, {"total": 0, "present": 0})
+        
         total_att = att.get("total", 0)
         present_att = att.get("present", 0)
         attendance_pct = f"{round((present_att / total_att) * 100)}%" if total_att > 0 else "—"
+        
+        # Calculate averages
         avg_rating = round(sum(perf["ratings"]) / len(perf["ratings"]), 1) if perf["ratings"] else None
         avg_service = round(sum(perf["service_times"]) / len(perf["service_times"])) if perf["service_times"] else None
-        performance_score = min(100, round(avg_rating * 20)) if avg_rating else None
+        
+        # Calculate performance score based on multiple factors
+        if avg_rating:
+            performance_score = min(100, round(avg_rating * 20))
+        elif perf["orders_total"] > 0:
+            # If no rating but has orders, give base score
+            performance_score = 50
+        else:
+            performance_score = None
+        
         results.append({
             "id": sid,
             "name": s.get("name", ""),
@@ -402,5 +447,6 @@ async def get_staff_performance():
             "performance_score": performance_score,
         })
 
+    # Sort by orders handled (primary metric)
     results.sort(key=lambda x: x["orders_handled"], reverse=True)
     return results

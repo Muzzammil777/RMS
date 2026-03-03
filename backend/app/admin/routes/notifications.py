@@ -44,7 +44,7 @@ async def list_notifications(
     type: Optional[str] = None,
     status: Optional[str] = None,
     channel: Optional[str] = None,
-    limit: int = Query(50, le=200),
+    limit: int = Query(200, le=500),
     skip: int = 0,
 ):
     db = get_db()

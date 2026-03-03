@@ -16,7 +16,7 @@ import {
   Cell 
 } from 'recharts';
 import { Calendar as CalendarIcon, CheckCircle2, Loader2 } from 'lucide-react';
-import { staffApi, shiftsApi } from '@/admin/utils/api';
+import { staffApi, shiftsApi, attendanceApi } from '@/admin/utils/api';
 
 interface StaffStats {
   byRole: Record<string, number>;
@@ -30,6 +30,7 @@ export function StaffReports() {
   const [exporting, setExporting] = useState(false);
   const [stats, setStats] = useState<StaffStats | null>(null);
   const [shifts, setShifts] = useState<any[]>([]);
+  const [attendance, setAttendance] = useState<any[]>([]);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [expenditureData, setExpenditureData] = useState([
@@ -67,13 +68,24 @@ export function StaffReports() {
       });
       setShifts(shiftsData || []);
 
-      // Calculate total hours and overtime
-      const totalShifts = shiftsData?.length || 0;
-      const regularHours = totalShifts * 8;
-      const overtimeHours = totalShifts * 2; // Assuming 2 hours OT per shift on average
-      const totalHours = regularHours + overtimeHours;
+      // Fetch attendance for the selected month
+      const attendanceData = await attendanceApi.list({
+        date_from: firstDay.toISOString().split('T')[0],
+        date_to: lastDay.toISOString().split('T')[0]
+      });
+      setAttendance(attendanceData || []);
 
-      // Update payroll split based on actual data
+      // Calculate actual hours from attendance records
+      const totalHoursWorked = attendanceData.reduce((sum: number, record: any) => {
+        return sum + (record.hoursWorked || 0);
+      }, 0);
+
+      // Standard hours per day is 8, overtime is anything above that
+      const regularHours = attendanceData.filter((r: any) => r.status === 'present').length * 8;
+      const overtimeHours = Math.max(0, totalHoursWorked - regularHours);
+
+      // Update payroll split based on actual attendance data
+      const totalHours = regularHours + overtimeHours;
       const regularPercent = totalHours > 0 ? (regularHours / totalHours) * 100 : 86.7;
       const otPercent = totalHours > 0 ? (overtimeHours / totalHours) * 100 : 13.3;
 
@@ -82,20 +94,49 @@ export function StaffReports() {
         { name: 'Mandatory Overtime', value: Number(otPercent.toFixed(1)), color: '#8B5A2B' },
       ]);
 
-      // Calculate department-wise expenditure based on staff distribution
-      const kitchenCount = statsData?.byRole?.chef || 10;
-      const serviceCount = statsData?.byRole?.waiter || 20;
-      const cleaningCount = statsData?.byRole?.cleaner || 5;
-      const barCount = statsData?.byRole?.bartender || 3;
+      // Group attendance by staff role/department
+      const staffList = await staffApi.list();
+      const staffMap = new Map(staffList.map((s: any) => [s._id, s]));
+      
+      // Calculate department-wise expenditure from actual attendance
+      const deptHours: Record<string, { regular: number; overtime: number }> = {
+        Kitchen: { regular: 0, overtime: 0 },
+        Service: { regular: 0, overtime: 0 },
+      };
 
-      const avgSalary = 25000;
-      const otRate = 1.5;
+      attendanceData.forEach((record: any) => {
+        if (record.status !== 'present') return;
+        const staff = staffMap.get(record.staffId);
+        if (!staff) return;
+
+        const hoursWorked = record.hoursWorked || 8;
+        const regularHrs = Math.min(8, hoursWorked);
+        const otHrs = Math.max(0, hoursWorked - 8);
+
+        let dept = 'Service'; // Default
+        const role = staff.role?.toLowerCase() || '';
+        if (role.includes('chef') || role.includes('cook')) dept = 'Kitchen';
+        else dept = 'Service'; // All other roles go to Service
+
+        deptHours[dept].regular += regularHrs;
+        deptHours[dept].overtime += otHrs;
+      });
+
+      // Convert hours to rupees (assuming ₹200/hr regular, ₹300/hr OT)
+      const regularRate = 200;
+      const otRate = 300;
 
       setExpenditureData([
-        { name: 'Kitchen', regular: kitchenCount * avgSalary / 12, overtime: kitchenCount * avgSalary / 12 * otRate / 4 },
-        { name: 'Service', regular: serviceCount * avgSalary / 12, overtime: serviceCount * avgSalary / 12 * otRate / 4 },
-        { name: 'Cleaning', regular: cleaningCount * avgSalary / 12, overtime: cleaningCount * avgSalary / 12 * otRate / 4 },
-        { name: 'Bar', regular: barCount * avgSalary / 12, overtime: barCount * avgSalary / 12 * otRate / 4 },
+        { 
+          name: 'Kitchen', 
+          regular: Math.round(deptHours.Kitchen.regular * regularRate), 
+          overtime: Math.round(deptHours.Kitchen.overtime * otRate) 
+        },
+        { 
+          name: 'Service', 
+          regular: Math.round(deptHours.Service.regular * regularRate), 
+          overtime: Math.round(deptHours.Service.overtime * otRate) 
+        },
       ]);
     } catch (err) {
       console.error('Error fetching report data:', err);
@@ -138,6 +179,23 @@ export function StaffReports() {
 
   const totalOvertimePaid = shifts.length * 2500; // Estimate
   const avgOTPerEmployee = shifts.length > 0 ? (shifts.length / (stats?.total || 1)).toFixed(1) : '0';
+  
+  // Calculate actual overtime metrics from attendance
+  const totalOvertimeHours = attendance.reduce((sum: number, record: any) => {
+    if (record.status !== 'present') return sum;
+    const hoursWorked = record.hoursWorked || 0;
+    const overtime = Math.max(0, hoursWorked - 8); // Hours beyond 8 are overtime
+    return sum + overtime;
+  }, 0);
+  
+  // Estimate overtime paid using average hourly rate of ₹125 (₹30,000/30/8) * 1.5 = ₹187.5/hr OT
+  const avgOTRate = (30000 / 30 / 8) * 1.5; // Default salary based OT rate
+  const overtimePaid = Math.round(totalOvertimeHours * avgOTRate);
+  
+  const avgOTHours = stats?.total && attendance.length > 0 
+    ? (totalOvertimeHours / stats.total).toFixed(1) 
+    : '0';
+  
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -260,9 +318,10 @@ export function StaffReports() {
               <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
             ) : (
               <>
-                <div className="text-4xl font-bold mb-6">₹{totalOvertimePaid.toLocaleString('en-IN')}.00</div>
+                <div className="text-4xl font-bold mb-6">₹{overtimePaid.toLocaleString('en-IN')}</div>
                 <div className="bg-white/5 p-4 rounded-xl border border-white/10">
-                  <p className="text-xs text-gray-400">Calculated from {shifts.length} Shift Entries</p>
+                  <p className="text-xs text-gray-400">Calculated from {attendance.length} Attendance Records</p>
+                  <p className="text-xs text-gray-400 mt-1">{totalOvertimeHours.toFixed(1)} OT hours @ ₹{Math.round(avgOTRate)}/hr (1.5x)</p>
                 </div>
               </>
             )}
@@ -276,8 +335,8 @@ export function StaffReports() {
               <Loader2 className="h-8 w-8 animate-spin text-gray-300" />
             ) : (
               <>
-                <div className="text-4xl font-bold text-[#2D2D2D] mb-4">{avgOTPerEmployee}h</div>
-                <p className="text-sm text-muted-foreground">Weekly allocation average</p>
+                <div className="text-4xl font-bold text-[#2D2D2D] mb-4">{avgOTHours}h</div>
+                <p className="text-sm text-muted-foreground">Per employee this month</p>
               </>
             )}
           </CardContent>

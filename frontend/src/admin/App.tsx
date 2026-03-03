@@ -11,7 +11,6 @@ const SecuritySettings = lazy(() => import('@/admin/components/security-settings
 const OffersLoyalty = lazy(() => import('@/admin/components/offers-loyalty').then(m => ({ default: m.OffersLoyalty })));
 const ReportsAnalytics = lazy(() => import('@/admin/components/reports-analytics').then(m => ({ default: m.ReportsAnalytics })));
 const NotificationManagement = lazy(() => import('@/admin/components/notification-management').then(m => ({ default: m.NotificationManagement })));
-const AdminChatBox = lazy(() => import('@/admin/components/AdminChatBox').then(m => ({ default: m.AdminChatBox })));
 import { LoginPage } from '@/admin/components/login-page';
 import { Button } from '@/admin/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/admin/components/ui/tabs';
@@ -94,7 +93,7 @@ function AppContent() {
   useEffect(() => {
     const fetchUnreadCount = async () => {
       try {
-        const result = await notificationsApi.list({ status: 'unread' });
+        const result = await notificationsApi.list({ status: 'unread', limit: 500 });
         const data = result.data || [];
         const role = user?.role ?? 'admin';
         const privileged = role === 'admin' || role === 'manager';
@@ -136,7 +135,7 @@ function AppContent() {
     };
     const handleNotif = () => {
       // Re-fetch real count instead of blindly incrementing
-      notificationsApi.list({ status: 'unread' }).then((result) => {
+      notificationsApi.list({ status: 'unread', limit: 500 }).then((result) => {
         const data = result.data || [];
         const role = user?.role ?? 'admin';
         const privileged = role === 'admin' || role === 'manager';
@@ -206,8 +205,8 @@ function AppContent() {
               >
                 <Bell className="h-5 w-5" style={{ color: '#000000' }} />
                 {notificationCount > 0 && (
-                  <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
-                    {notificationCount}
+                  <Badge className="absolute -top-1 -right-1 h-5 min-w-5 flex items-center justify-center p-0 px-1 text-xs">
+                    {notificationCount > 99 ? '99+' : notificationCount}
                   </Badge>
                 )}
               </Button>
@@ -335,7 +334,6 @@ function AppContent() {
         </div>
       </nav>
 
-      <Suspense fallback={null}><AdminChatBox /></Suspense>
     </div>
   );
 }

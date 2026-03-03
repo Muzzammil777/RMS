@@ -15,7 +15,7 @@ from ...db import get_db
 from ...audit import log_audit
 from ..schemas import MenuItemIn, MenuItemUpdate
 
-router = APIRouter(tags=["Menu"])
+router = APIRouter(tags=["Menu"], redirect_slashes=False)
 
 
 # ================= UTIL =================
@@ -37,6 +37,7 @@ def validate_object_id(id: str):
 
 # ================= MENU ITEMS =================
 
+@router.get("")
 @router.get("/")
 async def list_menu_items(
     category: Optional[str] = None,
@@ -62,7 +63,9 @@ async def list_menu_items(
             {"description": {"$regex": search, "$options": "i"}},
         ]
 
-    items = await db.menu_items.find(query).sort("name", 1).to_list(1000)
+    items = await db.menu_items.find(query).sort("name", 1).to_list(5000)
+    print(f"🔍 Menu query: {query}")
+    print(f"📊 Found {len(items)} menu items in database")
     return [serialize_doc(item) for item in items]
 
 
@@ -120,7 +123,7 @@ async def get_menu_categories():
 @router.get("/combos")
 async def list_combos():
     db = get_db()
-    combos = await db.combo_meals.find().sort("name", 1).to_list(100)
+    combos = await db.combo_meals.find().sort("name", 1).to_list(500)
     return [serialize_doc(combo) for combo in combos]
 
 
@@ -207,6 +210,7 @@ async def get_menu_item(item_id: str):
     return serialize_doc(item)
 
 
+@router.post("")
 @router.post("/")
 async def create_menu_item(data: MenuItemIn):
     db = get_db()

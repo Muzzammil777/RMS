@@ -456,8 +456,12 @@ export function OrderManagement() {
 
   const fetchOrders = async () => {
     try {
-      const params = isWaiter && user?.id ? { waiterId: user.id } : undefined;
-      const result = await ordersApi.list(params);
+      // Always fetch all recent orders without a waiter_id filter.
+      // The client-side filteredOrders already correctly shows each role
+      // only what they should see — previously passing waiterId caused
+      // client (customer) orders to be excluded when the $or backend
+      // query filled the result limit with unrelated admin orders.
+      const result = await ordersApi.list();
       const rawOrders = (result as any)?.data || result || [];
       setOrders(
         Array.isArray(rawOrders)
@@ -655,8 +659,8 @@ export function OrderManagement() {
 
   // Filter and search orders
   const filteredOrders = orders.filter(order => {
-    // Waiters only see their own orders (strictly — even unassigned orders are hidden)
-    if (isWaiter && order.waiterId !== user?.id) return false;
+    // Waiters see their own orders AND unassigned client-placed orders (no waiterId)
+    if (isWaiter && order.waiterId && order.waiterId !== user?.id) return false;
     if (filterStatus !== 'all' && order.status !== filterStatus) return false;
     if (filterType !== 'all' && order.type !== filterType) return false;
     if (filterTable !== 'all' && order.tableNumber?.toString() !== filterTable) return false;
@@ -665,33 +669,39 @@ export function OrderManagement() {
     return true;
   });
 
-  // Sort orders: bottleneck orders first, then by age, then by user preference
+  // Sort orders: new orders first, then bottleneck/delayed orders, then by creation time
   const sortedOrders = [...filteredOrders].sort((a, b) => {
     const aAge = getOrderAge(a);
     const bAge = getOrderAge(b);
     const aDelay = getDelayLevel(aAge, a.status);
     const bDelay = getDelayLevel(bAge, b.status);
 
-    // Innovation #5: Bottleneck orders to top
-    if (aDelay === 'bottleneck' && bDelay !== 'bottleneck') return -1;
-    if (bDelay === 'bottleneck' && aDelay !== 'bottleneck') return 1;
-    
-    // Then critical delays
-    if (aDelay === 'critical' && bDelay !== 'critical') return -1;
-    if (bDelay === 'critical' && aDelay !== 'critical') return 1;
-    
-    // Then warnings
-    if (aDelay === 'warning' && bDelay !== 'warning') return -1;
-    if (bDelay === 'warning' && aDelay !== 'warning') return 1;
+    // Separate active orders from processed/completed ones
+    const aProcessed = ['served', 'completed', 'cancelled'].includes(a.status);
+    const bProcessed = ['served', 'completed', 'cancelled'].includes(b.status);
 
-    // Extract order ID numbers for sorting
-    const aOrderId = generateOrderDisplayId(a.id, a.orderNumber);
-    const bOrderId = generateOrderDisplayId(b.id, b.orderNumber);
-    const aOrderNum = parseInt(aOrderId.replace(/[^0-9]/g, '')) || 0;
-    const bOrderNum = parseInt(bOrderId.replace(/[^0-9]/g, '')) || 0;
+    // Active orders always come before processed orders
+    if (!aProcessed && bProcessed) return -1;
+    if (aProcessed && !bProcessed) return 1;
 
-    // Sort by user preference (newest/oldest) based on order ID number
-    return sortBy === 'newest' ? bOrderNum - aOrderNum : aOrderNum - bOrderNum;
+    // Among active orders: bottleneck orders to top
+    if (!aProcessed && !bProcessed) {
+      if (aDelay === 'bottleneck' && bDelay !== 'bottleneck') return -1;
+      if (bDelay === 'bottleneck' && aDelay !== 'bottleneck') return 1;
+      
+      // Then critical delays
+      if (aDelay === 'critical' && bDelay !== 'critical') return -1;
+      if (bDelay === 'critical' && aDelay !== 'critical') return 1;
+      
+      // Then warnings
+      if (aDelay === 'warning' && bDelay !== 'warning') return -1;
+      if (bDelay === 'warning' && aDelay !== 'warning') return 1;
+    }
+
+    // For orders at same priority level, sort by creation time (newest first)
+    const aTime = new Date(a.createdAt).getTime();
+    const bTime = new Date(b.createdAt).getTime();
+    return bTime - aTime; // Newest first
   });
 
   // Calculate statistics
@@ -1161,22 +1171,6 @@ export function OrderManagement() {
                       )}
                     </div>
                   </div>
-
-                  {/* Innovation #7: Drag-to-Change Status Visual Cues */}
-                  {!['served', 'completed', 'cancelled'].includes(order.status) && (
-                    <div className="pt-2 pb-1">
-                      <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
-                        <div className="flex items-center gap-1">
-                          <MoveRight className="h-3 w-3" />
-                          <span>Swipe right for next status</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Ban className="h-3 w-3" />
-                          <span>Left to cancel</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
 
                   {/* Context-Aware Action Buttons */}
                   <div className="flex flex-col gap-2 pt-2">

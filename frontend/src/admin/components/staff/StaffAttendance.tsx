@@ -63,6 +63,7 @@ interface StaffMember {
   shift: string;
   phone?: string;
   department?: string;
+  salary?: number;
 }
 
 interface OnlineUser {
@@ -86,6 +87,23 @@ interface AttendanceForm {
 interface StaffAttendanceProps {
   globalSearch?: string;
 }
+
+// Default shift timings (matching backend shift types)
+const SHIFT_DEFAULTS: Record<string, { startTime: string; endTime: string }> = {
+  morning:   { startTime: '08:00', endTime: '16:00' },
+  afternoon: { startTime: '12:00', endTime: '20:00' },
+  evening:   { startTime: '16:00', endTime: '00:00' },
+  night:     { startTime: '22:00', endTime: '06:00' },
+};
+
+// Calculate hours between two times (handles overnight shifts)
+const calculateHours = (start: string, end: string): number => {
+  const [startH, startM] = start.split(':').map(Number);
+  const [endH, endM] = end.split(':').map(Number);
+  let hours = (endH - startH) + (endM - startM) / 60;
+  if (hours < 0) hours += 24; // Handle overnight (e.g., 22:00 to 06:00)
+  return Math.round(hours * 10) / 10; // Round to 1 decimal
+};
 
 export function StaffAttendance({ globalSearch = '' }: StaffAttendanceProps) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -315,13 +333,24 @@ export function StaffAttendance({ globalSearch = '' }: StaffAttendanceProps) {
 
     try {
       setBulkMarking(true);
-      const records = unmarked.map(s => ({
-        staffId: s._id,
-        date: today,
-        status: 'present'
-      }));
+      const records = unmarked.map(s => {
+        // Get shift timing based on staff's shift type
+        const shiftKey = s.shift?.toLowerCase() || 'morning';
+        const shiftTiming = SHIFT_DEFAULTS[shiftKey] || SHIFT_DEFAULTS.morning;
+        const hoursWorked = calculateHours(shiftTiming.startTime, shiftTiming.endTime);
+        
+        return {
+          staffId: s._id,
+          date: today,
+          status: 'present',
+          checkIn: shiftTiming.startTime,
+          checkOut: shiftTiming.endTime,
+          hoursWorked: hoursWorked,
+          notes: `Auto-marked with ${s.shift || 'default'} shift timing`
+        };
+      });
       const result = await attendanceApi.bulkMark(records);
-      toast.success(`Marked ${result.upserted} staff as Present`);
+      toast.success(`Marked ${result.upserted} staff as Present with shift timings`);
       fetchData();
     } catch (err) {
       console.error('Error bulk marking attendance:', err);
@@ -345,22 +374,22 @@ export function StaffAttendance({ globalSearch = '' }: StaffAttendanceProps) {
           <p className="text-gray-300">Real-time staff monitoring and shift verification.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button 
-            variant="outline" 
-            className="gap-2 text-white border-white/30 hover:text-white hover:bg-white/10"
+          <Button
+            variant="outline"
+            className="gap-2 bg-white text-[#8B5E34] border-white hover:bg-gray-100 font-semibold"
             onClick={handleExportCsv}
             disabled={exporting}
           >
-            {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarIcon className="h-4 w-4 text-white" />}
+            {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarIcon className="h-4 w-4" />}
             Export
           </Button>
           <Button
             variant="outline"
-            className="gap-2 text-white border-white/30 hover:text-white hover:bg-white/10"
+            className="gap-2 bg-white text-[#8B5E34] border-white hover:bg-gray-100 font-semibold"
             onClick={handleBulkMarkPresent}
             disabled={bulkMarking}
           >
-            {bulkMarking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4 text-white" />}
+            {bulkMarking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />}
             Mark All Present
           </Button>
           <Dialog open={manualEntryOpen} onOpenChange={setManualEntryOpen}>
@@ -672,6 +701,10 @@ export function StaffAttendance({ globalSearch = '' }: StaffAttendanceProps) {
                     const status = record.status?.toUpperCase() || 'ABSENT';
                     const clockInStatus = record.checkIn ? (new Date(`2000-01-01T${record.checkIn}`) < new Date('2000-01-01T08:00:00') ? 'EARLY' : 'ON TIME') : '';
                     
+                    // Calculate hourly rate from staff salary (salary / 30 days / 8 hours)
+                    const hourlyRate = ((staffInfo as any).salary || 30000) / 30 / 8;
+                    const earnedAmount = (record.hoursWorked || 0) * hourlyRate;
+                    
                     return (
                       <tr key={record._id} className="hover:bg-gray-50/50 transition-colors">
                         <td className="px-6 py-4">
@@ -707,8 +740,8 @@ export function StaffAttendance({ globalSearch = '' }: StaffAttendanceProps) {
                         </td>
                         <td className="px-6 py-4">
                           <div>
-                            <div className="font-bold text-green-600">₹{(record.hoursWorked || 0) * 1500}.00</div>
-                            <div className="text-[10px] font-bold text-gray-400">₹1,500/hr</div>
+                            <div className="font-bold text-green-600">₹{Math.round(earnedAmount).toLocaleString('en-IN')}</div>
+                            <div className="text-[10px] font-bold text-gray-400">₹{Math.round(hourlyRate).toLocaleString('en-IN')}/hr</div>
                           </div>
                         </td>
                         <td className="px-6 py-4">

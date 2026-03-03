@@ -39,7 +39,9 @@ export function AuditLogs() {
     setLoading(true);
     setApiError(null);
     try {
-      const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api/admin';
+      const API_URL = import.meta.env.PROD
+        ? (import.meta.env.VITE_API_URL || '') + '/api/admin'
+        : '/api/admin';
       
       const headers = {
         'Content-Type': 'application/json',
@@ -157,7 +159,9 @@ export function AuditLogs() {
 
   const handleExportLogs = async () => {
     try {
-      const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api/admin';
+      const API_URL = import.meta.env.PROD
+        ? (import.meta.env.VITE_API_URL || '') + '/api/admin'
+        : '/api/admin';
       const response = await fetch(`${API_URL}/audit/export?format=json&limit=1000`, {
         headers: { 'Content-Type': 'application/json' },
         signal: AbortSignal.timeout(5000)
