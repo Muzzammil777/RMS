@@ -26,6 +26,7 @@ def _serialize_menu_item(doc: dict) -> dict:
         "calories": doc.get("calories"),
         "prepTime": doc.get("prepTime"),
         "offer": doc.get("offer"),
+        "cuisine": doc.get("cuisine"),
     }
 
 

@@ -28,6 +28,7 @@ import {
   RefreshCcw,
   CheckCircle,
   XCircle,
+  Clock,
   IndianRupee,
   Calendar,
   User,
@@ -36,6 +37,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ordersApi, billingApi } from '@/admin/utils/api';
+import { useAuth } from '@/admin/utils/auth-context';
 
 interface Order {
   id: string;
@@ -45,8 +47,9 @@ interface Order {
   items: Array<{ name: string; quantity: number; price: number }>;
   total: number;
   status: string;
+  source?: string;        // 'client' = placed by customer; absent/other = admin/staff
   orderNumber?: string;
-  billingId?: string;  // For linking to billing entry
+  billingId?: string;     // For linking to billing entry
 }
 
 interface BillItem {
@@ -73,9 +76,12 @@ interface Invoice {
   payment_mode: string;
   status: string;
   created_at: string;
+  generated_by: string;  // who released the bill
+  source: string;        // 'admin' | 'client'
 }
 
 export function BillingPayment() {
+  const { user: authUser } = useAuth();
   const [activeTab, setActiveTab] = useState('generate');
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -114,6 +120,7 @@ export function BillingPayment() {
     })),
     total: o.total || o.totalAmount || 0,
     status: o.status,
+    source: o.source,
   });
 
   const fetchOrders = async () => {
@@ -138,14 +145,17 @@ export function BillingPayment() {
         return true;
       });
 
+      // Exclude orders placed by the customer via the client app
+      const adminOnly = unique.filter((o: any) => o.source !== 'client');
+
       // bill_requested first, then served
-      unique.sort((a, b) => {
+      adminOnly.sort((a: any, b: any) => {
         if (a.status === 'bill_requested' && b.status !== 'bill_requested') return -1;
         if (a.status !== 'bill_requested' && b.status === 'bill_requested') return 1;
         return 0;
       });
 
-      setOrders(unique.map(normalizeOrder));
+      setOrders(adminOnly.map(normalizeOrder));
     } catch (error) {
       console.error('Error fetching orders:', error);
       toast.error('Failed to load orders');
@@ -178,6 +188,8 @@ export function BillingPayment() {
         payment_mode: inv.paymentMethod || inv.payment_mode || 'cash',
         status: inv.status || 'paid',
         created_at: inv.createdAt || inv.created_at || new Date().toISOString(),
+        generated_by: inv.generatedBy || inv.generated_by || (inv.source === 'client' ? 'Customer (online)' : 'Admin'),
+        source: inv.source || 'admin',
       }));
       setInvoices(normalized);
     } catch (error) {
@@ -252,7 +264,6 @@ export function BillingPayment() {
 
     const invoicePayload = {
       orderId: selectedOrder?.id,
-      tableId: selectedOrder?.id ? undefined : undefined,
       tableNumber: selectedOrder?.table_number,
       customerName: selectedOrder?.customer_name || 'Walk-in Customer',
       items: billItems.map(item => ({ name: item.name, quantity: item.quantity, price: item.price })),
@@ -265,6 +276,8 @@ export function BillingPayment() {
       grandTotal: totals.grandTotal,
       paymentMethod: paymentMode,
       status: 'paid',
+      source: 'admin',
+      generatedBy: authUser?.name || authUser?.email || 'Admin',
     };
 
     try {
@@ -297,6 +310,8 @@ export function BillingPayment() {
         payment_mode: paymentMode,
         status: 'paid',
         created_at: created?.createdAt || new Date().toISOString(),
+        generated_by: authUser?.name || authUser?.email || 'Admin',
+        source: 'admin',
       };
 
       setInvoices(prev => [invoice, ...prev]);
@@ -800,7 +815,8 @@ export function BillingPayment() {
                     <TableHead>Invoice No.</TableHead>
                     <TableHead>Customer</TableHead>
                     <TableHead>Table</TableHead>
-                    <TableHead>Date & Time</TableHead>
+                    <TableHead>Released By</TableHead>
+                    <TableHead>Released At</TableHead>
                     <TableHead>Payment Mode</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
                     <TableHead>Status</TableHead>
@@ -813,7 +829,18 @@ export function BillingPayment() {
                       <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
                       <TableCell>{invoice.customer_name}</TableCell>
                       <TableCell>{invoice.table_number ? `Table ${invoice.table_number}` : 'Takeaway'}</TableCell>
-                      <TableCell>{new Date(invoice.created_at).toLocaleString()}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5">
+                          <User className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span className="text-sm">{invoice.generated_by}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5">
+                          <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span className="text-sm">{new Date(invoice.created_at).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <Badge variant="outline">{invoice.payment_mode.toUpperCase()}</Badge>
                       </TableCell>
@@ -821,10 +848,21 @@ export function BillingPayment() {
                         ₹{invoice.grand_total.toFixed(2)}
                       </TableCell>
                       <TableCell>
-                        <Badge className="bg-green-500">
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          {invoice.status}
-                        </Badge>
+                        {invoice.status === 'paid' ? (
+                          <Badge className="bg-green-500">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            paid
+                          </Badge>
+                        ) : invoice.status === 'pending' ? (
+                          <Badge className="bg-amber-500">
+                            <Clock className="h-3 w-3 mr-1" />
+                            pending
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-gray-400">
+                            {invoice.status}
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex gap-2 justify-end">

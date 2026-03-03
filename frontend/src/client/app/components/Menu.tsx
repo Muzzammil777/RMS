@@ -39,11 +39,19 @@ export default function Menu({ isLoggedIn, user, onAddToCart, onNavigate, onTogg
 
   useEffect(() => {
     let cancelled = false;
+    // Build a name→cuisine lookup from the static seed data as a fallback
+    const cuisineLookup = new Map<string, MenuItem['cuisine']>(
+      menuData.map(m => [m.name.toLowerCase(), m.cuisine])
+    );
     Promise.all([fetchMenuCategories(), fetchMenuItems()])
       .then(([cats, items]) => {
         if (cancelled) return;
         setCategories(cats);
-        setMenuItems(items);
+        // Enrich items that came back without a cuisine field
+        const enriched = items.map(item =>
+          item.cuisine ? item : { ...item, cuisine: cuisineLookup.get(item.name.toLowerCase()) }
+        );
+        setMenuItems(enriched);
       })
       .catch(() => {
         if (cancelled) return;
@@ -148,7 +156,7 @@ export default function Menu({ isLoggedIn, user, onAddToCart, onNavigate, onTogg
         </div>
         <div className="relative z-10 max-w-4xl mx-auto text-center px-6">
           <h1 
-            className="text-5xl md:text-7xl font-bold mb-6 text-white" 
+            className="text-3xl sm:text-5xl md:text-7xl font-bold mb-4 sm:mb-6 text-white" 
             style={{ fontFamily: "'Playfair Display', serif" }}
           >
             A Menu Crafted for True Food Lovers
@@ -164,7 +172,7 @@ export default function Menu({ isLoggedIn, user, onAddToCart, onNavigate, onTogg
       </section>
 
       {/* SECTION 2 — SUBHEADER (NOW WITH BACKGROUND IMAGE) */}
-      <section className="relative py-32 px-6 overflow-hidden">
+      <section className="relative py-16 sm:py-32 px-4 sm:px-6 overflow-hidden">
         {/* Background Image with Overlay for Premium feel */}
         <div className="absolute inset-0 z-0">
           <ImageWithFallback
@@ -181,7 +189,7 @@ export default function Menu({ isLoggedIn, user, onAddToCart, onNavigate, onTogg
              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#3E2723]">Culinary Philosophy</span>
           </div>
           <h2 
-            className="text-4xl md:text-5xl italic text-white mb-6 leading-tight drop-shadow-lg" 
+            className="text-2xl sm:text-4xl md:text-5xl italic text-white mb-4 sm:mb-6 leading-tight drop-shadow-lg" 
             style={{ fontFamily: "'Playfair Display', serif" }}
           >
             “People who love to eat are always the best people.”
@@ -200,7 +208,7 @@ export default function Menu({ isLoggedIn, user, onAddToCart, onNavigate, onTogg
       </section>
 
       {/* SECTION 3 — FOOD MENU LIST (WITH FIXED BACKGROUND) */}
-      <section className="relative py-20 px-6 min-h-screen overflow-hidden">
+      <section className="relative py-12 sm:py-20 px-3 sm:px-6 min-h-screen overflow-hidden">
         {/* IMPROVED BACKGROUND VISIBILITY */}
         <div className="absolute inset-0 z-0 pointer-events-none">
           <div className="absolute inset-0 bg-[#FAF7F2]"></div>
@@ -228,13 +236,13 @@ export default function Menu({ isLoggedIn, user, onAddToCart, onNavigate, onTogg
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search for your favorite dish..."
-                className="w-full pl-14 pr-6 py-5 border-2 border-[#E8DED0] bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg focus:outline-none focus:border-[#8B5A2B] focus:ring-8 focus:ring-[#8B5A2B]/5 transition-all text-lg"
+                className="w-full pl-14 pr-6 py-3 sm:py-5 border-2 border-[#E8DED0] bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg focus:outline-none focus:border-[#8B5A2B] focus:ring-8 focus:ring-[#8B5A2B]/5 transition-all text-base sm:text-lg"
               />
             </div>
           </div>
 
           {/* Filters */}
-          <div className="mb-16 space-y-8 bg-white/40 backdrop-blur-md p-8 rounded-3xl border border-white/60 shadow-xl">
+          <div className="mb-8 sm:mb-16 space-y-6 sm:space-y-8 bg-white/40 backdrop-blur-md p-4 sm:p-8 rounded-3xl border border-white/60 shadow-xl">
             {/* Category Filter */}
             <div>
               <div className="flex items-center gap-3 mb-5">
@@ -497,11 +505,11 @@ export default function Menu({ isLoggedIn, user, onAddToCart, onNavigate, onTogg
 
       {/* Customization Modal */}
       {selectedItem && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center z-50 p-4">
-          <div className="bg-[#FAF7F2] rounded-[40px] max-w-3xl w-full max-h-[90vh] overflow-hidden border border-[#C8A47A]/30 shadow-2xl flex flex-col">
-            <div className="bg-[#3E2723] px-10 py-8 flex items-center justify-between">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-[#FAF7F2] rounded-t-[32px] sm:rounded-[40px] max-w-3xl w-full max-h-[92vh] sm:max-h-[90vh] overflow-hidden border border-[#C8A47A]/30 shadow-2xl flex flex-col">
+            <div className="bg-[#3E2723] px-5 sm:px-10 py-5 sm:py-8 flex items-center justify-between">
               <div>
-                <h2 className="text-4xl font-bold text-[#C8A47A]" style={{ fontFamily: "'Playfair Display', serif" }}>Tailor Your Taste</h2>
+                <h2 className="text-2xl sm:text-4xl font-bold text-[#C8A47A]" style={{ fontFamily: "'Playfair Display', serif" }}>Tailor Your Taste</h2>
                 <p className="text-[#FAF7F2]/60 uppercase tracking-widest text-[10px] font-bold mt-1">{selectedItem.name}</p>
               </div>
               <button
@@ -512,21 +520,21 @@ export default function Menu({ isLoggedIn, user, onAddToCart, onNavigate, onTogg
               </button>
             </div>
 
-            <div className="p-10 space-y-10 overflow-y-auto">
-              <div className="flex flex-col md:flex-row gap-8 items-center md:items-start">
-                <div className="w-56 h-56 rounded-[32px] overflow-hidden bg-[#1A110D] flex-shrink-0 shadow-2xl border-4 border-white">
+            <div className="p-4 sm:p-10 space-y-6 sm:space-y-10 overflow-y-auto">
+              <div className="flex flex-col md:flex-row gap-5 sm:gap-8 items-center md:items-start">
+                <div className="w-36 h-36 sm:w-56 sm:h-56 rounded-[24px] sm:rounded-[32px] overflow-hidden bg-[#1A110D] flex-shrink-0 shadow-2xl border-4 border-white">
                   <ImageWithFallback src={selectedItem.image} alt={selectedItem.name} className="w-full h-full object-cover" />
                 </div>
                 <div className="flex flex-col justify-center">
-                  <h3 className="text-4xl font-bold text-[#3E2723] mb-3" style={{ fontFamily: "'Playfair Display', serif" }}>{selectedItem.name}</h3>
-                  <p className="text-[#6D4C41] mb-6 leading-relaxed font-light text-lg italic">"{selectedItem.description}"</p>
-                  <p className="text-5xl font-black text-[#3E2723]">₹{selectedItem.price}</p>
+                  <h3 className="text-2xl sm:text-4xl font-bold text-[#3E2723] mb-2 sm:mb-3" style={{ fontFamily: "'Playfair Display', serif" }}>{selectedItem.name}</h3>
+                  <p className="text-[#6D4C41] mb-3 sm:mb-6 leading-relaxed font-light text-base sm:text-lg italic">"{selectedItem.description}"</p>
+                  <p className="text-3xl sm:text-5xl font-black text-[#3E2723]">₹{selectedItem.price}</p>
                 </div>
               </div>
 
               {/* Spice Level */}
-              <div className="bg-white/60 p-8 rounded-[32px] border border-[#E8DED0]">
-                <label className="block text-xl font-bold mb-6 text-[#3E2723]">Select Heat Level</label>
+              <div className="bg-white/60 p-4 sm:p-8 rounded-[32px] border border-[#E8DED0]">
+                <label className="block text-base sm:text-xl font-bold mb-3 sm:mb-6 text-[#3E2723]">Select Heat Level</label>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {['mild', 'medium', 'hot', 'extra-hot'].map((level) => (
                     <button
@@ -545,8 +553,8 @@ export default function Menu({ isLoggedIn, user, onAddToCart, onNavigate, onTogg
               </div>
 
               {/* Add-ons */}
-              <div className="bg-white/60 p-8 rounded-[32px] border border-[#E8DED0]">
-                <label className="block text-xl font-bold mb-6 text-[#3E2723]">Exquisite Enhancements</label>
+              <div className="bg-white/60 p-4 sm:p-8 rounded-[32px] border border-[#E8DED0]">
+                <label className="block text-base sm:text-xl font-bold mb-3 sm:mb-6 text-[#3E2723]">Exquisite Enhancements</label>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   {addons.map((addon) => {
                     const isSelected = customization.addons.includes(addon.id);
@@ -561,7 +569,7 @@ export default function Menu({ isLoggedIn, user, onAddToCart, onNavigate, onTogg
                               : [...customization.addons, addon.id]
                           });
                         }}
-                        className={`p-6 rounded-[24px] border-2 text-left transition-all flex items-center justify-between ${
+                        className={`p-3 sm:p-6 rounded-[24px] border-2 text-left transition-all flex items-center justify-between ${
                           isSelected
                             ? 'bg-[#3E2723] text-[#C8A47A] border-[#3E2723]'
                             : 'bg-white text-[#3E2723] border-[#E8DED0]'
@@ -569,12 +577,12 @@ export default function Menu({ isLoggedIn, user, onAddToCart, onNavigate, onTogg
                       >
                         <div>
                           <p className="font-black uppercase tracking-widest text-xs mb-1">{addon.name}</p>
-                          <p className={`text-lg font-black ${isSelected ? 'text-[#FAF7F2]' : 'text-[#8B5A2B]'}`}>
+                          <p className={`text-base sm:text-lg font-black ${isSelected ? 'text-[#FAF7F2]' : 'text-[#8B5A2B]'}`}>
                             +₹{addon.price}
                           </p>
                         </div>
-                        <div className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center ${isSelected ? 'bg-[#C8A47A] border-[#C8A47A]' : 'border-[#E8DED0]'}`}>
-                          {isSelected ? <X className="w-5 h-5 text-[#2D1B10]" /> : <Plus className="w-5 h-5 text-[#8B5A2B]" />}
+                        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl border-2 flex items-center justify-center ${isSelected ? 'bg-[#C8A47A] border-[#C8A47A]' : 'border-[#E8DED0]'}`}>
+                          {isSelected ? <X className="w-4 h-4 sm:w-5 sm:h-5 text-[#2D1B10]" /> : <Plus className="w-4 h-4 sm:w-5 sm:h-5 text-[#8B5A2B]" />}
                         </div>
                       </button>
                     );
@@ -582,22 +590,22 @@ export default function Menu({ isLoggedIn, user, onAddToCart, onNavigate, onTogg
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center bg-[#3E2723]/5 p-10 rounded-[32px]">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-10 items-center bg-[#3E2723]/5 p-5 sm:p-10 rounded-[32px]">
                 <div className="flex flex-col items-center md:items-start">
-                  <label className="block text-sm font-black uppercase tracking-widest mb-6 text-[#3E2723]">Quantity</label>
-                  <div className="flex items-center gap-8 bg-white p-3 rounded-full border border-[#E8DED0]">
+                  <label className="block text-sm font-black uppercase tracking-widest mb-3 sm:mb-6 text-[#3E2723]">Quantity</label>
+                  <div className="flex items-center gap-5 sm:gap-8 bg-white p-2 sm:p-3 rounded-full border border-[#E8DED0]">
                     <button
                       onClick={() => setCustomization({ ...customization, quantity: Math.max(1, customization.quantity - 1) })}
-                      className="w-14 h-14 bg-[#FAF7F2] text-[#3E2723] rounded-full shadow-lg font-black text-2xl flex items-center justify-center active:scale-90"
+                      className="w-11 h-11 sm:w-14 sm:h-14 bg-[#FAF7F2] text-[#3E2723] rounded-full shadow-lg font-black text-xl sm:text-2xl flex items-center justify-center active:scale-90"
                     >
                       -
                     </button>
-                    <span className="text-3xl font-black w-12 text-center text-[#3E2723]">
+                    <span className="text-2xl sm:text-3xl font-black w-10 sm:w-12 text-center text-[#3E2723]">
                       {customization.quantity}
                     </span>
                     <button
                       onClick={() => setCustomization({ ...customization, quantity: customization.quantity + 1 })}
-                      className="w-14 h-14 bg-[#FAF7F2] text-[#3E2723] rounded-full shadow-lg font-black text-2xl flex items-center justify-center active:scale-90"
+                      className="w-11 h-11 sm:w-14 sm:h-14 bg-[#FAF7F2] text-[#3E2723] rounded-full shadow-lg font-black text-xl sm:text-2xl flex items-center justify-center active:scale-90"
                     >
                       +
                     </button>
@@ -606,13 +614,13 @@ export default function Menu({ isLoggedIn, user, onAddToCart, onNavigate, onTogg
 
                 <div className="text-center md:text-right border-l-0 md:border-l-2 border-[#8B5A2B]/20 md:pl-10">
                   <span className="text-xs text-[#8B5A2B] uppercase tracking-widest font-black block mb-2">Final Total</span>
-                  <p className="text-6xl font-black text-[#3E2723]">₹{selectedItem.price * customization.quantity}</p>
+                  <p className="text-4xl sm:text-6xl font-black text-[#3E2723]">₹{selectedItem.price * customization.quantity}</p>
                 </div>
               </div>
 
               <button
                 onClick={handleAddToCart}
-                className="w-full bg-gradient-to-r from-[#3E2723] to-[#8B5A2B] text-white py-8 rounded-[32px] font-black text-xl uppercase tracking-widest hover:shadow-2xl transition-all"
+                className="w-full bg-gradient-to-r from-[#3E2723] to-[#8B5A2B] text-white py-5 sm:py-8 rounded-[32px] font-black text-base sm:text-xl uppercase tracking-widest hover:shadow-2xl transition-all"
               >
                 Confirm Selection
               </button>

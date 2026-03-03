@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { CheckCircle, Clock, ChefHat, CheckCheck } from 'lucide-react';
 import type { Order } from '@/client/app/App';
 import { useLoyalty } from '@/client/app/context/LoyaltyContext';
+import { apiRequest } from '@/client/api/client';
 
 interface OrderTrackingProps {
   order: Order | null;
@@ -10,39 +11,45 @@ interface OrderTrackingProps {
 export default function OrderTracking({ order }: OrderTrackingProps) {
   const loyalty = useLoyalty();
   const [currentStatus, setCurrentStatus] = useState<Order['status']>(order?.status || 'preparing');
+  const earnedRef = useRef(false);
 
-  // Guard: If no order exists, show a message
-  if (!order) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-6">
-        <div className="max-w-lg w-full bg-white rounded-xl border border-gray-200 shadow-sm p-8 text-center">
-          <h2 className="text-2xl font-bold mb-4">No Order Found</h2>
-          <p className="text-gray-600 mb-6">
-            Please place an order from the menu first.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
+  // Poll the real order status from the backend every 5 seconds
   useEffect(() => {
-    // Simulate status progression
-    const statuses: Order['status'][] = ['preparing', 'ready', 'served'];
-    let currentIndex = statuses.indexOf(currentStatus);
+    if (!order?.id) return;
 
-    const interval = setInterval(() => {
-      if (currentIndex < statuses.length - 1) {
-        currentIndex++;
-        setCurrentStatus(statuses[currentIndex]);
+    const TERMINAL_STATUSES: Order['status'][] = ['served', 'completed'];
+
+    const poll = async () => {
+      try {
+        const res = await apiRequest<{ status: Order['status'] }>(`/orders/${order.id}`);
+        if (res?.status) {
+          setCurrentStatus(res.status);
+        }
+      } catch {
+        // silently keep last known status
       }
-    }, 8000); // Progress every 8 seconds for demo
+    };
+
+    // fetch immediately, then every 5 s
+    poll();
+    const interval = setInterval(() => {
+      // stop polling once the order is in a terminal state
+      if (TERMINAL_STATUSES.includes(currentStatus)) {
+        clearInterval(interval);
+        return;
+      }
+      poll();
+    }, 5000);
 
     return () => clearInterval(interval);
-  }, [currentStatus]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order?.id]);
 
   useEffect(() => {
     if (!order) return;
     if (currentStatus !== 'served' && currentStatus !== 'completed') return;
+    if (earnedRef.current) return; // only award points once
+    earnedRef.current = true;
 
     const itemsSubtotal = order.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const effectiveSubtotal =
@@ -56,6 +63,20 @@ export default function OrderTracking({ order }: OrderTrackingProps) {
       date: new Date().toISOString(),
     });
   }, [currentStatus, loyalty, order]);
+
+  // Guard: If no order exists, show a message (placed after hooks to respect rules-of-hooks)
+  if (!order) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-6">
+        <div className="max-w-lg w-full bg-white rounded-xl border border-gray-200 shadow-sm p-8 text-center">
+          <h2 className="text-2xl font-bold mb-4">No Order Found</h2>
+          <p className="text-gray-600 mb-6">
+            Please place an order from the menu first.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const steps = [
     {
@@ -80,10 +101,12 @@ export default function OrderTracking({ order }: OrderTrackingProps) {
 
   const getStepStatus = (stepId: string) => {
     const stepIndex = steps.findIndex((s) => s.id === stepId);
-    const currentIndex = steps.findIndex((s) => s.id === currentStatus);
-    
+    // 'completed' is beyond 'served' — treat it as past-the-end
+    const resolvedStatus = currentStatus === 'completed' ? 'served' : currentStatus;
+    const currentIndex = steps.findIndex((s) => s.id === resolvedStatus);
+
     if (stepIndex < currentIndex) return 'completed';
-    if (stepIndex === currentIndex) return 'active';
+    if (stepIndex === currentIndex) return currentStatus === 'completed' ? 'completed' : 'active';
     return 'pending';
   };
 

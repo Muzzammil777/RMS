@@ -61,11 +61,11 @@ export default function Profile({ user, onUpdateUser, onLogout, orders = [], onR
   };
 
   return (
-    <div className="min-h-screen bg-background py-8 px-6">
+    <div className="min-h-screen bg-background py-6 sm:py-8 px-3 sm:px-6">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2 text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>My Profile</h1>
+          <h1 className="text-2xl sm:text-4xl font-bold mb-2 text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>My Profile</h1>
           <p className="text-muted-foreground">Manage your account information and view order history</p>
         </div>
 

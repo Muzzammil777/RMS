@@ -409,7 +409,8 @@ export function OrderManagement() {
     
     return {
       ...rawOrder,
-      id: rawOrder?._id || rawOrder?.id || '',
+      // Prefer the custom ORD-... id; fall back to MongoDB _id only if absent
+      id: rawOrder?.id || rawOrder?._id || '',
       orderNumber: rawOrder?.orderNumber || rawOrder?.order_number,
       items: normalizedItems,
       total: finalTotal,

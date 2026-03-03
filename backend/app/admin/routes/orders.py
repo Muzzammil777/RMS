@@ -46,7 +46,7 @@ async def create_billing_entry_for_order(db, order_id: str, order: dict):
         
         # Update order with billing reference
         await db.orders.update_one(
-            {"_id": ObjectId(order_id)},
+            {"_id": order["_id"]},
             {"$set": {
                 "billingId": str(result.inserted_id),
                 "paymentStatus": "pending_payment",
@@ -69,7 +69,8 @@ def serialize_doc(doc):
     if doc is None:
         return None
     doc["_id"] = str(doc["_id"])
-    doc["id"] = doc["_id"]  # Add id field for frontend compatibility
+    # Preserve the order's own id (e.g. 'ORD-...' from client); fall back to _id
+    doc["id"] = doc.get("id") or doc["_id"]
     
     # Convert datetime fields to ISO format with timezone
     datetime_fields = ["createdAt", "updatedAt", "statusUpdatedAt", "completedAt", "cancelledAt", "occupiedAt"]
@@ -82,6 +83,20 @@ def serialize_doc(doc):
                 doc[field] = doc[field] + 'Z' if 'T' in doc[field] else doc[field]
     
     return doc
+
+
+async def _get_order(db, order_id: str):
+    """Find an order by custom id (ORD-...) or by MongoDB _id."""
+    # Try the custom string id field first (used by client-placed orders)
+    order = await db.orders.find_one({"id": order_id})
+    if order:
+        return order
+    # Fallback: try as ObjectId for admin-created orders
+    try:
+        order = await db.orders.find_one({"_id": ObjectId(order_id)})
+    except Exception:
+        pass
+    return order
 
 
 @router.get("/served-for-billing")
@@ -122,7 +137,12 @@ async def list_orders(
     if table:
         query["tableNumber"] = table
     if waiter_id and waiter_id != "all":
-        query["waiterId"] = waiter_id
+        # Include the waiter's own orders AND client orders (source="client" or no waiterId)
+        query["$or"] = [
+            {"waiterId": waiter_id},
+            {"source": "client"},
+            {"waiterId": {"$exists": False}},
+        ]
     if date_from:
         query["createdAt"] = {"$gte": datetime.fromisoformat(date_from)}
     if date_to:
@@ -182,7 +202,7 @@ async def get_order_stats():
 async def get_order(order_id: str):
     """Get single order"""
     db = get_db()
-    order = await db.orders.find_one({"_id": ObjectId(order_id)})
+    order = await _get_order(db, order_id)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     return serialize_doc(order)
@@ -251,16 +271,21 @@ async def update_order(order_id: str, data: dict):
     data["updatedAt"] = datetime.utcnow().isoformat() + 'Z'
     data.pop("_id", None)
     data.pop("id", None)  # Remove id field to prevent index conflicts
-    
+
+    order = await _get_order(db, order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    oid = order["_id"]
+
     result = await db.orders.update_one(
-        {"_id": ObjectId(order_id)},
+        {"_id": oid},
         {"$set": data}
     )
     
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Order not found")
     
-    updated = await db.orders.find_one({"_id": ObjectId(order_id)})
+    updated = await db.orders.find_one({"_id": oid})
     await log_audit("update", "order", order_id)
     
     return serialize_doc(updated)
@@ -292,15 +317,16 @@ async def update_order_status(order_id: str, status: str, deduct_inventory: bool
         raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}")
     
     # Get current order to check previous status
-    order = await db.orders.find_one({"_id": ObjectId(order_id)})
+    order = await _get_order(db, order_id)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
-    
+
+    oid = order["_id"]
     previous_status = order.get("status")
     
     # Update status
     result = await db.orders.update_one(
-        {"_id": ObjectId(order_id)},
+        {"_id": oid},
         {"$set": {"status": status, "statusUpdatedAt": datetime.utcnow().isoformat() + 'Z'}}
     )
     
@@ -391,7 +417,7 @@ async def update_order_status(order_id: str, status: str, deduct_inventory: bool
     # FLOW INTEGRATION: Update payment when completed
     if status == "completed" and order.get("paymentStatus") != "paid":
         await db.orders.update_one(
-            {"_id": ObjectId(order_id)},
+            {"_id": oid},
             {"$set": {"paymentStatus": "settled", "completedAt": datetime.utcnow().isoformat() + 'Z'}}
         )
     
@@ -416,11 +442,12 @@ async def delete_order(order_id: str):
     db = get_db()
     
     # Get order details before deleting
-    order = await db.orders.find_one({"_id": ObjectId(order_id)})
+    order = await _get_order(db, order_id)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
-    
-    result = await db.orders.delete_one({"_id": ObjectId(order_id)})
+
+    oid = order["_id"]
+    result = await db.orders.delete_one({"_id": oid})
     
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -463,9 +490,13 @@ async def get_kitchen_queue():
 async def update_item_status(order_id: str, item_index: int, status: str):
     """Update individual item status in order"""
     db = get_db()
-    
+
+    order = await _get_order(db, order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
     result = await db.orders.update_one(
-        {"_id": ObjectId(order_id)},
+        {"_id": order["_id"]},
         {"$set": {f"items.{item_index}.status": status}}
     )
     

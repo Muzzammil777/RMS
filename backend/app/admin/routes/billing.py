@@ -456,7 +456,12 @@ async def create_invoice(data: dict):
     # Generate invoice number
     count = await db.invoices.count_documents({})
     data["invoiceNumber"] = f"INV-{datetime.utcnow().strftime('%Y%m%d')}-{count + 1001}"
-    data["createdAt"] = datetime.utcnow()
+    now = datetime.utcnow()
+    data["createdAt"] = now
+    data["generatedAt"] = now.isoformat() + "Z"
+    # generatedBy is passed from the frontend; default to 'Admin' if missing
+    if "generatedBy" not in data or not data["generatedBy"]:
+        data["generatedBy"] = "Admin"
     
     result = await db.invoices.insert_one(data)
     created = await db.invoices.find_one({"_id": result.inserted_id})

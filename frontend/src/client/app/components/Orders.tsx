@@ -189,7 +189,7 @@ export default function Orders({ currentOrder, onNavigate, user }: OrdersProps) 
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-6">
+    <div className="min-h-screen bg-gray-50 py-6 sm:py-8 px-4 sm:px-6">
       <div className="max-w-3xl mx-auto">
         {/* Reservation Request Order Card */}
         {renderReservationCard()}

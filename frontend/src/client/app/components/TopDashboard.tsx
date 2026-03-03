@@ -54,17 +54,17 @@ export default function TopDashboard({
     <div className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md">
       {/* Main Header - Always Visible */}
       <header className="bg-primary text-white">
-        <div className="max-w-[1920px] mx-auto px-6">
-          <div className="flex items-center justify-between h-20">
+        <div className="max-w-[1920px] mx-auto px-3 sm:px-6">
+          <div className="flex items-center justify-between h-14 sm:h-20">
             {/* Restaurant Title + Logo - Left */}
-            <div className="flex items-center gap-3 flex-shrink-0">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 mr-2">
               <img
                 src={sysConfig.logoUrl || '/favicon.png'}
                 alt="Logo"
-                className="w-10 h-10 rounded-lg object-cover"
+                className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg object-cover flex-shrink-0"
                 onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/favicon.png'; }}
               />
-              <h1 className="text-3xl font-bold text-white tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
+              <h1 className="text-base sm:text-2xl font-bold text-white tracking-tight truncate" style={{ fontFamily: "'Playfair Display', serif" }}>
                 {restaurantName}
               </h1>
             </div>
@@ -73,25 +73,25 @@ export default function TopDashboard({
             {!isLoggedIn && (
               <button
                 onClick={() => navigate('/admin')}
-                className="flex items-center gap-2 px-4 py-2 text-white/80 hover:text-white border border-white/30 hover:border-white/60 rounded-xl transition-all duration-200 text-xs font-semibold uppercase tracking-widest backdrop-blur-sm hover:bg-white/10"
+                className="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 text-white/80 hover:text-white border border-white/30 hover:border-white/60 rounded-xl transition-all duration-200 text-xs font-semibold uppercase tracking-widest backdrop-blur-sm hover:bg-white/10 flex-shrink-0"
               >
                 <ShieldCheck className="w-4 h-4" />
-                Login as Staff
+                <span className="hidden xs:inline sm:inline">Staff</span>
               </button>
             )}
             {isLoggedIn && (
-              <div className="flex items-center gap-3 flex-shrink-0">
+              <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
                 {/* Cart Icon */}
                 <button
                   onClick={() => onModuleChange('cart')}
-                  className={`relative p-2.5 rounded-lg transition-all ${
+                  className={`relative p-2 sm:p-2.5 rounded-lg transition-all ${
                     activeModule === 'cart' ? 'bg-white text-primary' : 'text-white hover:bg-primary-foreground/10'
                   }`}
                   title="Cart"
                 >
-                  <ShoppingCart className="w-6 h-6" />
+                  <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6" />
                   {cartItemCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-destructive text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-semibold">
+                    <span className="absolute -top-1 -right-1 bg-destructive text-white text-[10px] w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center font-semibold">
                       {cartItemCount}
                     </span>
                   )}
@@ -100,14 +100,14 @@ export default function TopDashboard({
                 {/* Notifications Icon */}
                 <button
                   onClick={() => onModuleChange('notifications')}
-                  className={`relative p-2.5 rounded-lg transition-all ${
+                  className={`relative p-2 sm:p-2.5 rounded-lg transition-all ${
                     activeModule === 'notifications' ? 'bg-white text-primary' : 'text-white hover:bg-primary-foreground/10'
                   }`}
                   title="Notifications"
                 >
-                  <Bell className="w-6 h-6" />
+                  <Bell className="w-5 h-5 sm:w-6 sm:h-6" />
                   {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-accent text-foreground text-xs min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-semibold border border-white">
+                    <span className="absolute -top-1 -right-1 bg-accent text-foreground text-[10px] min-w-4 h-4 sm:min-w-5 sm:h-5 px-1 rounded-full flex items-center justify-center font-semibold border border-white">
                       {unreadCount > 99 ? '99+' : unreadCount}
                     </span>
                   )}
@@ -116,23 +116,23 @@ export default function TopDashboard({
                 {/* Profile Icon */}
                 <button
                   onClick={() => onModuleChange('profile')}
-                  className={`relative p-2.5 rounded-lg transition-all ${
+                  className={`relative p-2 sm:p-2.5 rounded-lg transition-all ${
                     activeModule === 'profile' ? 'bg-white text-primary' : 'text-white hover:bg-primary-foreground/10'
                   }`}
                   title={user?.name || 'Profile'}
                 >
-                  <User className="w-6 h-6" />
+                  <User className="w-5 h-5 sm:w-6 sm:h-6" />
                 </button>
 
                 {/* Settings Icon */}
                 <button
                   onClick={() => onModuleChange('settings')}
-                  className={`relative p-2.5 rounded-lg transition-all ${
+                  className={`relative p-2 sm:p-2.5 rounded-lg transition-all ${
                     activeModule === 'settings' ? 'bg-white text-primary' : 'text-white hover:bg-primary-foreground/10'
                   }`}
                   title="Settings"
                 >
-                  <Settings className="w-6 h-6" />
+                  <Settings className="w-5 h-5 sm:w-6 sm:h-6" />
                 </button>
               </div>
             )}
@@ -143,8 +143,8 @@ export default function TopDashboard({
       {/* Module Navigation Bar - Below Header, Only After Login */}
       {isLoggedIn && showModuleNav && (
         <nav className="bg-white border-b border-border">
-          <div className="max-w-[1920px] mx-auto px-6">
-            <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide py-2">
+          <div className="max-w-[1920px] mx-auto px-2 sm:px-6">
+            <div className="flex items-center gap-0.5 sm:gap-1 overflow-x-auto scrollbar-hide py-1.5 sm:py-2">
               {navItems.map((item) => {
                 const active = activeModule === item.id;
 
@@ -153,7 +153,7 @@ export default function TopDashboard({
                     key={item.id}
                     onClick={() => onModuleChange(item.id)}
                     className={`
-                      relative flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all whitespace-nowrap text-sm font-medium
+                      relative flex items-center gap-1.5 px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-lg transition-all whitespace-nowrap text-xs sm:text-sm font-medium
                       ${active ? 'bg-primary text-white shadow-sm' : 'text-foreground hover:bg-secondary'}
                     `}
                   >

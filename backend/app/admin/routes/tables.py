@@ -106,6 +106,14 @@ async def create_table(data: dict):
         
         data["createdAt"] = datetime.utcnow()
         data["status"] = data.get("status", "available")
+
+        # Auto-generate a human-readable tableId if not supplied
+        if not data.get("tableId"):
+            data["tableId"] = (
+                data.get("displayNumber")
+                or data.get("name")
+                or data.get("tableNumber")
+            )
         
         result = await db.tables.insert_one(data)
         created = await db.tables.find_one({"_id": result.inserted_id})

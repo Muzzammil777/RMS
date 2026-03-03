@@ -408,10 +408,10 @@ export default function Queue({
       </section>
 
       {/* FEATURES SECTION */}
-      <section className="py-20 px-6 bg-white">
+      <section className="py-10 sm:py-20 px-4 sm:px-6 bg-white">
         <div className="max-w-6xl mx-auto">
           <h2
-            className="text-4xl md:text-5xl text-center mb-4 text-[#8B5A2B]"
+            className="text-2xl sm:text-4xl md:text-5xl text-center mb-4 text-[#8B5A2B]"
             style={{ fontFamily: "'Playfair Display', serif" }}
           >
             A Better Way to Wait
@@ -485,7 +485,7 @@ export default function Queue({
       </section>
 
       {/* JOIN QUEUE FORM / STATUS */}
-      <section ref={formRef} className="py-20 px-6 bg-[#FAF7F2]">
+      <section ref={formRef} className="py-10 sm:py-20 px-4 sm:px-6 bg-[#FAF7F2]">
         <div className="max-w-4xl mx-auto">
           {!showStatus ? (
             /* ── JOIN QUEUE FORM ── */

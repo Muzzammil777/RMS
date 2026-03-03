@@ -451,8 +451,8 @@ export default function App() {
                 currentOrder: order,
                 orders: [...appState.orders, order]
               });
-              createOrder(order, appState.user?.email).catch(() => {
-                // ignore; app still works offline
+              createOrder(order, appState.user?.email).catch((err) => {
+                console.error('[createOrder] failed to save order to server:', err);
               });
               clearCart();
               handleModuleChange('tracking');
@@ -524,7 +524,7 @@ export default function App() {
         user={appState.user}
         showModuleNav={activeModule !== 'login'}
       />
-      <main className={appState.isLoggedIn && activeModule !== 'login' ? 'pt-36' : 'pt-20'}>
+      <main className={appState.isLoggedIn && activeModule !== 'login' ? 'pt-24 sm:pt-36' : 'pt-14 sm:pt-20'}>
         {renderActiveModule()}
       </main>
     </div>

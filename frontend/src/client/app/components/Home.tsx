@@ -100,17 +100,17 @@ export default function Home({
         
         <div className="relative z-10 max-w-5xl mx-auto text-center px-6">
           <h1 
-            className="text-5xl md:text-7xl font-bold mb-6 text-white drop-shadow-2xl leading-tight" 
+            className="text-3xl sm:text-5xl md:text-7xl font-bold mb-4 sm:mb-6 text-white drop-shadow-2xl leading-tight" 
             style={{ fontFamily: "'Playfair Display', serif" }}
           >
             RMS by Movi Cloud Labs
           </h1>
-          <p className="text-xl md:text-2xl text-white/90 font-light mb-12 max-w-3xl mx-auto leading-relaxed italic">
+          <p className="text-base sm:text-xl md:text-2xl text-white/90 font-light mb-8 sm:mb-12 max-w-3xl mx-auto leading-relaxed italic">
             "Home of taste where food is prepared with care, quality ingredients, and attention to taste."
           </p>
           <button
             onClick={() => onNavigate(isLoggedIn ? "menu" : "login")}
-            className="px-12 py-5 bg-gradient-to-r from-[#8B5A2B] to-[#C8A47A] text-white rounded-2xl hover:shadow-[0_15px_30px_-10px_rgba(200,164,122,0.6)] transition-all duration-300 text-lg font-black uppercase tracking-[0.15em] inline-flex items-center gap-3 active:scale-95"
+            className="px-6 sm:px-12 py-3 sm:py-5 bg-gradient-to-r from-[#8B5A2B] to-[#C8A47A] text-white rounded-2xl hover:shadow-[0_15px_30px_-10px_rgba(200,164,122,0.6)] transition-all duration-300 text-sm sm:text-lg font-black uppercase tracking-[0.15em] inline-flex items-center gap-3 active:scale-95"
           >
             {isLoggedIn ? "Explore Menu" : "Get Started"}
             <ArrowRight className="w-6 h-6" />
@@ -122,7 +122,7 @@ export default function Home({
       {isLoggedIn && (
         <>
           {/* SECTION 2 — ABOUT US / SUBHEADER */}
-          <section className="relative w-full py-32 overflow-hidden">
+          <section className="relative w-full py-16 sm:py-32 overflow-hidden">
             <div className="absolute inset-0">
               <ImageWithFallback
                 src={aboutBgImage}
@@ -133,17 +133,17 @@ export default function Home({
             </div>
             
             <div className="relative z-10 max-w-7xl mx-auto px-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
                 {/* Empty left side for visual balance */}
                 <div className="hidden lg:block"></div>
                 
                 {/* Content on right side */}
                 <div>
-                  <div className="inline-block mb-6 px-5 py-2 bg-[#C8A47A]/20 backdrop-blur-sm rounded-full border border-[#C8A47A]/30">
+                  <div className="inline-block mb-4 sm:mb-6 px-5 py-2 bg-[#C8A47A]/20 backdrop-blur-sm rounded-full border border-[#C8A47A]/30">
                     <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#C8A47A]">About Royal Cuisine</span>
                   </div>
                   <h2 
-                    className="text-5xl md:text-6xl font-bold text-white mb-8 leading-tight" 
+                    className="text-3xl sm:text-5xl md:text-6xl font-bold text-white mb-4 sm:mb-8 leading-tight" 
                     style={{ fontFamily: "'Playfair Display', serif" }}
                   >
                     Seamless Dining Experience
@@ -160,7 +160,7 @@ export default function Home({
           </section>
 
           {/* SECTION: QUOTE HIGHLIGHT */}
-          <section className="relative w-full py-32 overflow-hidden">
+          <section className="relative w-full py-16 sm:py-32 overflow-hidden">
             <div className="absolute inset-0">
               <ImageWithFallback
                 src={quoteBgImage}
@@ -172,7 +172,7 @@ export default function Home({
             
             <div className="relative z-10 max-w-4xl mx-auto text-center px-6">
               <p 
-                className="text-4xl md:text-6xl text-white mb-10 leading-tight" 
+                className="text-2xl sm:text-4xl md:text-6xl text-white mb-6 sm:mb-10 leading-tight" 
                 style={{ fontFamily: "'Great Vibes', cursive" }}
               >
                 “Destroy the world if even a single person does not have food.”
@@ -187,14 +187,14 @@ export default function Home({
           </section>
 
           {/* SECTION 3 — FEATURES / WHAT WE DO */}
-          <section className="py-24 px-6 bg-[#FAF7F2]">
+          <section className="py-12 sm:py-24 px-4 sm:px-6 bg-[#FAF7F2]">
             <div className="max-w-7xl mx-auto">
               <div className="text-center mb-16">
                 <div className="inline-block mb-6 p-1 bg-[#C8A47A] rounded-full px-4">
                   <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#3E2723]">What We Offer</span>
                 </div>
                 <h2 
-                  className="text-5xl md:text-6xl font-bold text-[#3E2723] mb-4" 
+                  className="text-3xl sm:text-5xl md:text-6xl font-bold text-[#3E2723] mb-4" 
                   style={{ fontFamily: "'Playfair Display', serif" }}
                 >
                   Our Specialties
@@ -206,17 +206,17 @@ export default function Home({
                 <div className="group relative bg-[#2D1B10] rounded-[24px] overflow-hidden border border-[#C8A47A]/30 shadow-2xl hover:shadow-[#C8A47A]/20 transition-all duration-500 hover:-translate-y-2">
                   <div className="absolute inset-0 bg-gradient-to-b from-[#3E2723] to-[#2D1B10] opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                   
-                  <div className="relative z-10 p-10 text-center">
-                    <div className="w-24 h-24 mx-auto mb-8 bg-gradient-to-br from-[#C8A47A] to-[#8B5A2B] rounded-full flex items-center justify-center shadow-xl">
-                      <Sparkles className="w-12 h-12 text-[#FAF7F2]" strokeWidth={1.5} />
+                  <div className="relative z-10 p-6 sm:p-10 text-center">
+                    <div className="w-16 h-16 sm:w-24 sm:h-24 mx-auto mb-5 sm:mb-8 bg-gradient-to-br from-[#C8A47A] to-[#8B5A2B] rounded-full flex items-center justify-center shadow-xl">
+                      <Sparkles className="w-8 h-8 sm:w-12 sm:h-12 text-[#FAF7F2]" strokeWidth={1.5} />
                     </div>
                     <h3 
-                      className="text-3xl font-bold text-[#FAF7F2] mb-4 group-hover:text-[#C8A47A] transition-colors" 
+                      className="text-xl sm:text-3xl font-bold text-[#FAF7F2] mb-3 sm:mb-4 group-hover:text-[#C8A47A] transition-colors" 
                       style={{ fontFamily: "'Playfair Display', serif" }}
                     >
                       Quality Ingredients
                     </h3>
-                    <p className="text-[#EADBC8]/70 text-lg leading-relaxed font-light">
+                    <p className="text-[#EADBC8]/70 text-sm sm:text-lg leading-relaxed font-light">
                       We source only the finest and freshest ingredients to ensure every dish is a masterpiece of flavor and quality.
                     </p>
                   </div>
@@ -226,17 +226,17 @@ export default function Home({
                 <div className="group relative bg-[#2D1B10] rounded-[24px] overflow-hidden border border-[#C8A47A]/30 shadow-2xl hover:shadow-[#C8A47A]/20 transition-all duration-500 hover:-translate-y-2">
                   <div className="absolute inset-0 bg-gradient-to-b from-[#3E2723] to-[#2D1B10] opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                   
-                  <div className="relative z-10 p-10 text-center">
-                    <div className="w-24 h-24 mx-auto mb-8 bg-gradient-to-br from-[#C8A47A] to-[#8B5A2B] rounded-full flex items-center justify-center shadow-xl">
-                      <Clock className="w-12 h-12 text-[#FAF7F2]" strokeWidth={1.5} />
+                  <div className="relative z-10 p-6 sm:p-10 text-center">
+                    <div className="w-16 h-16 sm:w-24 sm:h-24 mx-auto mb-5 sm:mb-8 bg-gradient-to-br from-[#C8A47A] to-[#8B5A2B] rounded-full flex items-center justify-center shadow-xl">
+                      <Clock className="w-8 h-8 sm:w-12 sm:h-12 text-[#FAF7F2]" strokeWidth={1.5} />
                     </div>
                     <h3 
-                      className="text-3xl font-bold text-[#FAF7F2] mb-4 group-hover:text-[#C8A47A] transition-colors" 
+                      className="text-xl sm:text-3xl font-bold text-[#FAF7F2] mb-3 sm:mb-4 group-hover:text-[#C8A47A] transition-colors" 
                       style={{ fontFamily: "'Playfair Display', serif" }}
                     >
                       Fast Service
                     </h3>
-                    <p className="text-[#EADBC8]/70 text-lg leading-relaxed font-light">
+                    <p className="text-[#EADBC8]/70 text-sm sm:text-lg leading-relaxed font-light">
                       Swift and efficient service that respects your time without ever compromising on the quality of your meal.
                     </p>
                   </div>
@@ -246,17 +246,17 @@ export default function Home({
                 <div className="group relative bg-[#2D1B10] rounded-[24px] overflow-hidden border border-[#C8A47A]/30 shadow-2xl hover:shadow-[#C8A47A]/20 transition-all duration-500 hover:-translate-y-2">
                   <div className="absolute inset-0 bg-gradient-to-b from-[#3E2723] to-[#2D1B10] opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                   
-                  <div className="relative z-10 p-10 text-center">
-                    <div className="w-24 h-24 mx-auto mb-8 bg-gradient-to-br from-[#C8A47A] to-[#8B5A2B] rounded-full flex items-center justify-center shadow-xl">
-                      <MapPin className="w-12 h-12 text-[#FAF7F2]" strokeWidth={1.5} />
+                  <div className="relative z-10 p-6 sm:p-10 text-center">
+                    <div className="w-16 h-16 sm:w-24 sm:h-24 mx-auto mb-5 sm:mb-8 bg-gradient-to-br from-[#C8A47A] to-[#8B5A2B] rounded-full flex items-center justify-center shadow-xl">
+                      <MapPin className="w-8 h-8 sm:w-12 sm:h-12 text-[#FAF7F2]" strokeWidth={1.5} />
                     </div>
                     <h3 
-                      className="text-3xl font-bold text-[#FAF7F2] mb-4 group-hover:text-[#C8A47A] transition-colors" 
+                      className="text-xl sm:text-3xl font-bold text-[#FAF7F2] mb-3 sm:mb-4 group-hover:text-[#C8A47A] transition-colors" 
                       style={{ fontFamily: "'Playfair Display', serif" }}
                     >
                       Prime Location
                     </h3>
-                    <p className="text-[#EADBC8]/70 text-lg leading-relaxed font-light">
+                    <p className="text-[#EADBC8]/70 text-sm sm:text-lg leading-relaxed font-light">
                       Strategically located for your convenience, offering both premium dine-in and efficient takeaway services.
                     </p>
                   </div>
@@ -266,14 +266,14 @@ export default function Home({
           </section>
 
           {/* SECTION 4 — POPULAR DISHES (Exact Menu Card Reuse) */}
-          <section className="py-24 px-6 bg-[#F5F0E8]">
+          <section className="py-12 sm:py-24 px-4 sm:px-6 bg-[#F5F0E8]">
             <div className="max-w-7xl mx-auto">
               <div className="text-center mb-16">
                 <div className="inline-block mb-6 p-1 bg-[#C8A47A] rounded-full px-4">
                   <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#3E2723]">Customer Favorites</span>
                 </div>
                 <h2 
-                  className="text-5xl md:text-6xl font-bold text-[#3E2723] mb-4" 
+                  className="text-3xl sm:text-5xl md:text-6xl font-bold text-[#3E2723] mb-4" 
                   style={{ fontFamily: "'Playfair Display', serif" }}
                 >
                   Popular Dishes
@@ -364,19 +364,19 @@ export default function Home({
           </section>
 
           {/* SECTION 5 — CUSTOMER REVIEWS */}
-          <section className="py-24 px-6 bg-[#FAF7F2]">
+          <section className="py-12 sm:py-24 px-4 sm:px-6 bg-[#FAF7F2]">
             <div className="max-w-7xl mx-auto">
-              <div className="text-center mb-16">
-                <div className="inline-block mb-6 p-1 bg-[#C8A47A] rounded-full px-4">
+              <div className="text-center mb-10 sm:mb-16">
+                <div className="inline-block mb-4 sm:mb-6 p-1 bg-[#C8A47A] rounded-full px-4">
                   <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#3E2723]">Testimonials</span>
                 </div>
                 <h2 
-                  className="text-5xl md:text-6xl font-bold text-[#3E2723] mb-4" 
+                  className="text-3xl sm:text-5xl md:text-6xl font-bold text-[#3E2723] mb-4" 
                   style={{ fontFamily: "'Playfair Display', serif" }}
                 >
                   What Our Guests Say
                 </h2>
-                <p className="text-xl text-[#6D4C41] font-light">
+                <p className="text-base sm:text-xl text-[#6D4C41] font-light">
                   Real experiences from our valued customers
                 </p>
               </div>
@@ -420,14 +420,14 @@ export default function Home({
           </section>
 
           {/* SECTION: LIVE RESTAURANT STATS */}
-          <section className="py-24 px-6 bg-[#F5F0E8]">
+          <section className="py-12 sm:py-24 px-4 sm:px-6 bg-[#F5F0E8]">
             <div className="max-w-7xl mx-auto">
-              <div className="text-center mb-16">
-                <div className="inline-block mb-6 p-1 bg-[#C8A47A] rounded-full px-4">
+              <div className="text-center mb-10 sm:mb-16">
+                <div className="inline-block mb-4 sm:mb-6 p-1 bg-[#C8A47A] rounded-full px-4">
                   <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#3E2723]">By The Numbers</span>
                 </div>
                 <h2
-                  className="text-4xl md:text-5xl font-bold text-[#3E2723] mb-4"
+                  className="text-3xl sm:text-4xl md:text-5xl font-bold text-[#3E2723] mb-4"
                   style={{ fontFamily: "'Playfair Display', serif" }}
                 >
                   Our Restaurant Today
@@ -482,15 +482,15 @@ export default function Home({
                     style={{ borderColor: stat.border }}
                   >
                     <div className={`absolute inset-0 bg-gradient-to-br ${stat.bg} opacity-50 group-hover:opacity-70 transition-opacity duration-500`} />
-                    <div className="relative z-10 p-8 flex flex-col items-center text-center">
+                    <div className="relative z-10 p-4 sm:p-8 flex flex-col items-center text-center">
                       <div
-                        className="w-16 h-16 mb-5 rounded-2xl flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-500"
+                        className="w-12 h-12 sm:w-16 sm:h-16 mb-4 sm:mb-5 rounded-2xl flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-500"
                         style={{ backgroundColor: `${stat.color}18` }}
                       >
-                        <stat.icon className="w-8 h-8" style={{ color: stat.color }} />
+                        <stat.icon className="w-6 h-6 sm:w-8 sm:h-8" style={{ color: stat.color }} />
                       </div>
                       <div
-                        className="text-4xl font-black mb-2 tabular-nums"
+                        className="text-2xl sm:text-4xl font-black mb-2 tabular-nums"
                         style={{ color: stat.color, fontFamily: "'Playfair Display', serif" }}
                       >
                         {statsLoading ? (
@@ -510,9 +510,9 @@ export default function Home({
       )}
 
       {/* SECTION 6 — FOOTER */}
-      <footer className="bg-[#2D1B10] text-[#FAF7F2] py-16 px-6 border-t border-[#C8A47A]/20">
+      <footer className="bg-[#2D1B10] text-[#FAF7F2] py-10 sm:py-16 px-4 sm:px-6 border-t border-[#C8A47A]/20">
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 sm:gap-12 mb-8 sm:mb-12">
             {/* Brand */}
             <div>
               <h3 

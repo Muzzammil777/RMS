@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Trash2, Plus, Minus, ShoppingBag, CreditCard, Smartphone, Wallet, CheckCircle, Download, Award, Users as UsersIcon, MapPin, Loader2 } from 'lucide-react';
+import { Trash2, Plus, Minus, ShoppingBag, CreditCard, Smartphone, Wallet, CheckCircle, Download, Award, Users as UsersIcon, MapPin, Loader2, FileText, ChevronDown, ChevronUp, Clock, Receipt } from 'lucide-react';
 import { ImageWithFallback } from '@/client/app/components/figma/ImageWithFallback';
 import type { CartItem, Order, User } from '@/client/app/App';
 import { useLoyalty } from '@/client/app/context/LoyaltyContext';
@@ -8,6 +8,8 @@ import { getEligibleOffers } from '@/client/app/data/offersData';
 import { fetchEligibleOffers } from '@/client/api/offers';
 import { fetchTables, fetchActiveReservation } from '@/client/api/reservations';
 import type { Table } from '@/client/api/reservations';
+import { fetchInvoices } from '@/client/api/orders';
+import type { ClientInvoice } from '@/client/api/orders';
 
 interface CartProps {
   cart: CartItem[];
@@ -31,6 +33,12 @@ export default function Cart({ cart, user, onUpdateQuantity, onRemoveItem, onChe
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
   const [earnedPoints, setEarnedPoints] = useState<number>(0);
   const [appliedOfferId, setAppliedOfferId] = useState<string | null>(null);
+
+  // Previous orders / bills history
+  const [invoiceHistory, setInvoiceHistory] = useState<ClientInvoice[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [expandedBillId, setExpandedBillId] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
 
   // Real tables fetched from the backend
   const [tables, setTables] = useState<Table[]>([]);
@@ -86,6 +94,18 @@ export default function Cart({ cart, user, onUpdateQuantity, onRemoveItem, onChe
       cancelled = true;
     };
   }, [loyalty.balancePoints, subtotal, user]);
+
+  // Load invoice history whenever the user is known
+  useEffect(() => {
+    if (!user?.email) return;
+    let cancelled = false;
+    setLoadingHistory(true);
+    fetchInvoices(user.email)
+      .then((inv) => { if (!cancelled) setInvoiceHistory(inv); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoadingHistory(false); });
+    return () => { cancelled = true; };
+  }, [user?.email]);
 
   const appliedOffer: Offer | null = useMemo(() => {
     if (!appliedOfferId) return null;
@@ -176,15 +196,138 @@ export default function Cart({ cart, user, onUpdateQuantity, onRemoveItem, onChe
     }, 2000);
   };
 
+  // ── Previous Orders & Bills section (reused in both empty and filled views) ──
+  const previousOrdersSection = user ? (
+    <div className="mt-10 max-w-3xl mx-auto">
+      <button
+        onClick={() => setShowHistory((p) => !p)}
+        className="w-full flex items-center justify-between px-5 py-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-amber-50 flex items-center justify-center">
+            <Receipt className="w-5 h-5 text-amber-600" />
+          </div>
+          <div className="text-left">
+            <p className="font-semibold text-gray-900 text-sm">Previous Orders &amp; Bills</p>
+            <p className="text-xs text-gray-500">
+              {loadingHistory ? 'Loading…' : `${invoiceHistory.length} order${invoiceHistory.length !== 1 ? 's' : ''} found`}
+            </p>
+          </div>
+        </div>
+        {showHistory ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+      </button>
+
+      {showHistory && (
+        <div className="mt-2 border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm">
+          {loadingHistory ? (
+            <div className="flex items-center justify-center py-10 gap-2 text-gray-500">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span className="text-sm">Loading your orders…</span>
+            </div>
+          ) : invoiceHistory.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+              <FileText className="w-8 h-8 mb-2 opacity-40" />
+              <p className="text-sm">No past orders yet</p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-gray-100">
+              {invoiceHistory.map((inv) => {
+                const isExpanded = expandedBillId === inv.id;
+                const date = inv.createdAt ? new Date(inv.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+                return (
+                  <li key={inv.id}>
+                    <div className="flex items-center gap-3 px-4 py-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono text-xs font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded">
+                            {inv.invoiceNumber || inv.orderId?.slice(-8).toUpperCase()}
+                          </span>
+                          <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full ${inv.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                            {inv.status}
+                          </span>
+                          <span className="text-[10px] text-gray-400 capitalize">{inv.orderType || 'order'}</span>
+                        </div>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <Clock className="w-3 h-3 text-gray-400" />
+                          <span className="text-xs text-gray-500">{date}</span>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="font-bold text-gray-900">₹{Number(inv.grandTotal).toFixed(2)}</p>
+                        <p className="text-xs text-gray-400">{inv.items?.length ?? 0} item{(inv.items?.length ?? 0) !== 1 ? 's' : ''}</p>
+                      </div>
+                      <button
+                        onClick={() => setExpandedBillId(isExpanded ? null : inv.id)}
+                        className="ml-2 shrink-0 flex items-center gap-1 text-xs font-semibold text-amber-600 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-lg transition-colors"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        {isExpanded ? 'Close' : 'Bill'}
+                      </button>
+                    </div>
+
+                    {isExpanded && (
+                      <div className="bg-amber-50/40 border-t border-amber-100 px-5 py-4 text-sm">
+                        <div className="flex justify-between items-center mb-3">
+                          <p className="font-semibold text-gray-800 flex items-center gap-1.5">
+                            <Receipt className="w-4 h-4 text-amber-600" />
+                            Invoice {inv.invoiceNumber}
+                          </p>
+                          {inv.tableNumber && (
+                            <span className="text-xs text-gray-500">Table {inv.tableNumber}</span>
+                          )}
+                        </div>
+                        <div className="space-y-1 mb-3">
+                          {(inv.items || []).map((item, i) => (
+                            <div key={i} className="flex justify-between text-xs text-gray-700">
+                              <span>{item.name} × {item.quantity}</span>
+                              <span>₹{(item.price * item.quantity).toFixed(2)}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="border-t border-amber-200 pt-2 space-y-1">
+                          <div className="flex justify-between text-xs text-gray-600">
+                            <span>Subtotal</span><span>₹{Number(inv.subtotal).toFixed(2)}</span>
+                          </div>
+                          {inv.taxAmount > 0 && (
+                            <div className="flex justify-between text-xs text-gray-600">
+                              <span>GST ({inv.taxPercent}%)</span><span>₹{Number(inv.taxAmount).toFixed(2)}</span>
+                            </div>
+                          )}
+                          {inv.discountAmount > 0 && (
+                            <div className="flex justify-between text-xs text-green-600">
+                              <span>Discount</span><span>−₹{Number(inv.discountAmount).toFixed(2)}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between font-bold text-gray-900 border-t border-amber-200 pt-1 mt-1">
+                            <span>Total Paid</span><span>₹{Number(inv.grandTotal).toFixed(2)}</span>
+                          </div>
+                        </div>
+                        <div className="mt-2 flex items-center gap-1.5 text-xs text-gray-500">
+                          <span className="capitalize">{inv.paymentMethod || 'online'}</span>
+                          <span>·</span>
+                          <span>{date}</span>
+                        </div>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  ) : null;
+
   if (isComplete) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-6">
-        <div className="max-w-lg w-full bg-white rounded-xl border border-gray-200 shadow-sm p-8">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center py-8 sm:py-12 px-4 sm:px-6">
+        <div className="max-w-lg w-full bg-white rounded-xl border border-gray-200 shadow-sm p-6 sm:p-8">
           <div className="text-center">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <CheckCircle className="w-12 h-12 text-green-600" />
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6">
+              <CheckCircle className="w-9 h-9 sm:w-12 sm:h-12 text-green-600" />
             </div>
-            <h2 className="text-3xl font-bold mb-2">Payment Successful!</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold mb-2">Payment Successful!</h2>
             <p className="text-gray-600 mb-4">
               Your payment of ₹{total.toFixed(2)} has been received
             </p>
@@ -204,24 +347,27 @@ export default function Cart({ cart, user, onUpdateQuantity, onRemoveItem, onChe
 
   if (cart.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-6">
-        <div className="text-center">
-          <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
-            <ShoppingBag className="w-12 h-12 text-gray-400" />
+      <div className="min-h-screen bg-gray-50 py-8 sm:py-12 px-4 sm:px-6">
+        <div className="max-w-3xl mx-auto">
+          <div className="text-center mb-4">
+            <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
+              <ShoppingBag className="w-12 h-12 text-gray-400" />
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-bold mb-2">Your Cart is Empty</h2>
+            <p className="text-gray-600 mb-6">Add items from the menu to get started</p>
           </div>
-          <h2 className="text-3xl font-bold mb-2">Your Cart is Empty</h2>
-          <p className="text-gray-600 mb-6">Add items from the menu to get started</p>
+          {previousOrdersSection}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background py-8 px-6">
+    <div className="min-h-screen bg-background py-6 sm:py-8 px-3 sm:px-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>Shopping Cart & Checkout</h1>
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-4xl font-bold mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>Shopping Cart &amp; Checkout</h1>
           <p className="text-muted-foreground">{cart.length} items in your cart</p>
         </div>
 
@@ -233,11 +379,11 @@ export default function Cart({ cart, user, onUpdateQuantity, onRemoveItem, onChe
               {cart.map((item) => (
                 <div
                   key={item.id}
-                  className="bg-white rounded-xl border border-gray-200 shadow-sm p-6"
+                  className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-6"
                 >
                   <div className="flex gap-4">
                     {/* Item Image */}
-                    <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
                       <ImageWithFallback
                         src={`https://source.unsplash.com/featured/400x300/?${encodeURIComponent(item.image)}`}
                         alt={item.name}
@@ -783,6 +929,8 @@ export default function Cart({ cart, user, onUpdateQuantity, onRemoveItem, onChe
             </div>
           </div>
         </div>
+        {/* Previous Orders & Bills */}
+        {previousOrdersSection}
       </div>
     </div>
   );

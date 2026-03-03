@@ -666,12 +666,12 @@ export default function Reservation({ user, onNavigate }: ReservationProps) {
           {/* Content - Positioned in the center with animations */}
           <div className="relative z-10 max-w-4xl mx-auto text-center px-6">
             <h1
-              className="reservation-hero-title text-5xl md:text-7xl font-bold mb-6 text-white drop-shadow-2xl"
+              className="reservation-hero-title text-3xl sm:text-5xl md:text-7xl font-bold mb-4 sm:mb-6 text-white drop-shadow-2xl"
               style={{ fontFamily: "'Playfair Display', serif" }}
             >
               Table Reservation
             </h1>
-            <p className="reservation-hero-subtitle text-xl md:text-2xl text-white/90 font-light leading-relaxed">
+            <p className="reservation-hero-subtitle text-base sm:text-xl md:text-2xl text-white/90 font-light leading-relaxed">
               No waiting, No worries - just great dining.<br />
               Reserve your table and enjoy every moment.
             </p>
@@ -680,36 +680,36 @@ export default function Reservation({ user, onNavigate }: ReservationProps) {
       )}
 
       {/* SECTION 2 — RESERVATION OPERATIONS (Second Slide - Scrollable) */}
-      <section className="relative py-20 px-6 min-h-screen">
+      <section className="relative py-10 sm:py-20 px-4 sm:px-6 min-h-screen">
         <div className="max-w-6xl mx-auto">
           {/* Tab Navigation */}
           {uiMode === 'search' && (
             <div className="bg-white/95 backdrop-blur-sm rounded-t-2xl border-t border-x border-[#8B5A2B]/20 p-2 flex flex-wrap gap-2">
               <button
                 onClick={() => setActiveTab('check')}
-                className={`flex-1 min-w-[200px] px-6 py-4 rounded-lg font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'check'
+                className={`flex-1 min-w-[140px] px-4 sm:px-6 py-3 sm:py-4 rounded-lg font-bold transition-all flex items-center justify-center gap-2 text-sm sm:text-base ${activeTab === 'check'
                   ? 'bg-[#8B5A2B] text-white shadow-lg scale-[1.02]'
                   : 'bg-transparent text-[#8B5A2B] hover:bg-[#8B5A2B]/10'
                   }`}
               >
-                <Clock className="w-5 h-5" />
+                <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
                 Check Availability
               </button>
               <button
                 onClick={() => setActiveTab('my-reservations')}
-                className={`flex-1 min-w-[200px] px-6 py-4 rounded-lg font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'my-reservations'
+                className={`flex-1 min-w-[140px] px-4 sm:px-6 py-3 sm:py-4 rounded-lg font-bold transition-all flex items-center justify-center gap-2 text-sm sm:text-base ${activeTab === 'my-reservations'
                   ? 'bg-[#8B5A2B] text-white shadow-lg scale-[1.02]'
                   : 'bg-transparent text-[#8B5A2B] hover:bg-[#8B5A2B]/10'
                   }`}
               >
-                <LayoutGrid className="w-5 h-5" />
+                <LayoutGrid className="w-4 h-4 sm:w-5 sm:h-5" />
                 My Reservations
               </button>
             </div>
           )}
 
           {/* Tab Content */}
-          <div className={`bg-white/95 backdrop-blur-sm rounded-2xl ${uiMode === 'search' ? 'rounded-t-none' : ''} border border-[#8B5A2B]/20 shadow-xl p-8`}>
+          <div className={`bg-white/95 backdrop-blur-sm rounded-2xl ${uiMode === 'search' ? 'rounded-t-none' : ''} border border-[#8B5A2B]/20 shadow-xl p-4 sm:p-8`}>
 
             {/* Check Availability Tab */}
             {activeTab === 'check' && uiMode === 'search' && (
@@ -947,8 +947,8 @@ export default function Reservation({ user, onNavigate }: ReservationProps) {
                     </div>
                   </div>
 
-                  <div className="overflow-hidden rounded-xl border border-gray-100 shadow-sm">
-                    <table className="w-full">
+                  <div className="overflow-x-auto rounded-xl border border-gray-100 shadow-sm">
+                    <table className="w-full min-w-[640px]">
                       <thead>
                         <tr className="bg-[#FAF7F2]/50 border-b border-gray-100">
                           <th className="text-left py-4 px-6 font-bold text-xs text-gray-500 uppercase tracking-wider">TABLE</th>

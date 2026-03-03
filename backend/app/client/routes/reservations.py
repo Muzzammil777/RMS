@@ -52,8 +52,22 @@ def _table_filter(table_id: str) -> Optional[dict]:
 def _serialize_table(doc: dict) -> dict:
     # Admin stores tables with _id, name, displayNumber etc.
     # Map to the client-expected shape.
-    table_id = doc.get("tableId") or str(doc.get("_id", ""))
-    table_name = doc.get("tableName") or doc.get("name") or doc.get("displayNumber") or table_id
+    # Prefer the explicit tableId, then displayNumber/name/tableNumber before
+    # falling back to the raw ObjectId string.
+    table_id = (
+        doc.get("tableId")
+        or doc.get("displayNumber")
+        or doc.get("name")
+        or doc.get("tableNumber")
+        or str(doc.get("_id", ""))
+    )
+    table_name = (
+        doc.get("tableName")
+        or doc.get("displayNumber")
+        or doc.get("name")
+        or doc.get("tableNumber")
+        or table_id
+    )
     # Normalise status to lowercase so the client can compare consistently.
     raw_status = doc.get("status") or "available"
     status = raw_status.lower()
