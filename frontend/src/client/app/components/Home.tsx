@@ -108,13 +108,22 @@ export default function Home({
           <p className="text-base sm:text-xl md:text-2xl text-white/90 font-light mb-8 sm:mb-12 max-w-3xl mx-auto leading-relaxed italic">
             "Home of taste where food is prepared with care, quality ingredients, and attention to taste."
           </p>
-          <button
-            onClick={() => onNavigate(isLoggedIn ? "menu" : "login")}
-            className="px-6 sm:px-12 py-3 sm:py-5 bg-gradient-to-r from-[#8B5A2B] to-[#C8A47A] text-white rounded-2xl hover:shadow-[0_15px_30px_-10px_rgba(200,164,122,0.6)] transition-all duration-300 text-sm sm:text-lg font-black uppercase tracking-[0.15em] inline-flex items-center gap-3 active:scale-95"
-          >
-            {isLoggedIn ? "Explore Menu" : "Get Started"}
-            <ArrowRight className="w-6 h-6" />
-          </button>
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <button
+              onClick={() => onNavigate(isLoggedIn ? "menu" : "login")}
+              className="px-6 sm:px-12 py-3 sm:py-5 bg-gradient-to-r from-[#8B5A2B] to-[#C8A47A] text-white rounded-2xl hover:shadow-[0_15px_30px_-10px_rgba(200,164,122,0.6)] transition-all duration-300 text-sm sm:text-lg font-black uppercase tracking-[0.15em] inline-flex items-center gap-3 active:scale-95"
+            >
+              {isLoggedIn ? "Explore Menu" : "Get Started"}
+              <ArrowRight className="w-6 h-6" />
+            </button>
+            <a
+              href="/kiosk"
+              className="px-6 sm:px-12 py-3 sm:py-5 bg-white/10 backdrop-blur-sm border-2 border-[#C8A47A] text-white rounded-2xl hover:bg-white/20 hover:shadow-[0_15px_30px_-10px_rgba(200,164,122,0.4)] transition-all duration-300 text-sm sm:text-lg font-black uppercase tracking-[0.15em] inline-flex items-center gap-3 active:scale-95"
+            >
+              <ShoppingBag className="w-6 h-6" />
+              Order with Kiosk
+            </a>
+          </div>
         </div>
       </section>
 

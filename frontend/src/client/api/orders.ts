@@ -1,12 +1,13 @@
 import { apiRequest } from "@/client/api/client";
 import type { Order } from "@/client/app/App";
 
-export async function createOrder(order: Order, userId?: string): Promise<Order> {
+export async function createOrder(order: Order, userId?: string, source?: string): Promise<Order> {
   return apiRequest<Order>("/orders", {
     method: "POST",
     body: {
       ...order,
       userId,
+      source: source || "client",
     },
   });
 }

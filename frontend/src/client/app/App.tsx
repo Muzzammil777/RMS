@@ -434,7 +434,10 @@ export default function App() {
           <Menu
             isLoggedIn={appState.isLoggedIn}
             user={appState.user || undefined}
+            cart={appState.cart}
             onAddToCart={addToCart}
+            onUpdateQuantity={updateCartItem}
+            onRemoveItem={removeFromCart}
             onNavigate={handleModuleChange}
             onToggleFavorite={toggleFavorite}
           />

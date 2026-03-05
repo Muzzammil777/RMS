@@ -147,8 +147,8 @@ export function BillingPayment() {
         return true;
       });
 
-      // Exclude orders placed by the customer via the client app
-      const adminOnly = unique.filter((o: any) => o.source !== 'client');
+      // Exclude orders placed by the customer via the client app or kiosk (auto-invoiced)
+      const adminOnly = unique.filter((o: any) => o.source !== 'client' && o.source !== 'kiosk');
 
       // Exclude orders that are already paid (they should only appear in Invoices tab)
       const unpaidOnly = adminOnly.filter((o: any) => o.paymentStatus !== 'paid');

@@ -137,10 +137,11 @@ async def list_orders(
     if table:
         query["tableNumber"] = table
     if waiter_id and waiter_id != "all":
-        # Only the waiter's own orders and all client-placed orders
+        # Only the waiter's own orders and all client-placed / kiosk orders
         query["$or"] = [
             {"waiterId": waiter_id},
             {"source": "client"},
+            {"source": "kiosk"},
         ]
     if date_from:
         query["createdAt"] = {"$gte": datetime.fromisoformat(date_from)}
