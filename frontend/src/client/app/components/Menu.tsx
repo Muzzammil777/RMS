@@ -630,7 +630,11 @@ export default function Menu({ isLoggedIn, user, onAddToCart, onNavigate, onTogg
       )}
 
       {/* Chatbot Component */}
-      <Chatbot />
+      <Chatbot 
+        isLoggedIn={isLoggedIn}
+        onAddToCart={onAddToCart}
+        onNavigate={onNavigate}
+      />
     </div>
   );
 }
