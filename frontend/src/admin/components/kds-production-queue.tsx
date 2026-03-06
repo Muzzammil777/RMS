@@ -422,13 +422,23 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const getPreparationTime = (item: OrderItem): string => {
-    if (!item.startedAt) return "Not started";
+  // Returns elapsed time since the item was started (count-up). Stops once item is COMPLETED.
+  const getItemElapsed = (item: OrderItem): string => {
+    if (!item.startedAt) return "--:--";
+    const stopAt = item.status === "COMPLETED" ? item.startedAt : currentTime;
+    const elapsed = Math.floor((stopAt.getTime() - item.startedAt.getTime()) / 1000);
+    const mins = Math.floor(elapsed / 60);
+    const secs = elapsed % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Color for item elapsed clock: green <5m, orange 5–10m, red >=10m
+  const getItemElapsedColor = (item: OrderItem): string => {
+    if (!item.startedAt) return "#9CA3AF";
     const elapsed = Math.floor((currentTime.getTime() - item.startedAt.getTime()) / 1000);
-    const remaining = Math.max(0, item.preparationTime - elapsed);
-    const mins = Math.floor(remaining / 60);
-    const secs = remaining % 60;
-    return remaining > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : "Ready!";
+    if (elapsed < 300) return "#4CAF50";
+    if (elapsed < 600) return "#FFA500";
+    return "#E63946";
   };
 
   const getTimeColor = (createdAt: Date): string => {
@@ -546,7 +556,7 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
     const order = orders.find(o => o.id === orderId);
     
     try {
-      // Mark only this station's items as completed (or all if head chef)
+      // Mark this station's items (or all items if head chef) as COMPLETED locally
       if (order) {
         const newStatuses = new Map(itemStatuses);
         order.items.forEach(item => {
@@ -556,25 +566,23 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
         });
         setItemStatuses(newStatuses);
       }
-      
-      // Check if ALL items across ALL stations are now completed
-      const updatedItems = order ? order.items.map(item => ({
-        ...item,
-        status: (isHeadChef || item.station === station) ? "COMPLETED" as const : item.status
-      })) : [];
-      const allDone = updatedItems.every(i => i.status === "COMPLETED");
-      
-      // Only update API to 'ready' when all stations are done
-      if (allDone) {
-        await ordersApi.updateStatus(orderId, 'ready');
-      }
-      
-      setOrders(prev => prev.map(o => 
-        o.id === orderId 
+
+      // Always push 'ready' to the API.
+      // Each station's item statuses are tracked purely in local memory — the
+      // "allDone" check used to fail because other stations' items defaulted to
+      // PENDING in this instance's local state.  Clicking "Mark Ready" is an
+      // explicit declaration that this order is ready for serving, so we always
+      // update the backend regardless of local item state.
+      await ordersApi.updateStatus(orderId, 'ready');
+
+      // Move the order to the READY column in local state immediately so both
+      // the station chef and the head chef (who polls every 5 s) see it as ready.
+      setOrders(prev => prev.map(o =>
+        o.id === orderId
           ? {
               ...o,
-              status: allDone ? "READY" as OrderStatus : o.status,
-              items: o.items.map(i => 
+              status: "READY" as OrderStatus,
+              items: o.items.map(i =>
                 (isHeadChef || i.station === station)
                   ? { ...i, status: "COMPLETED" as const }
                   : i
@@ -582,16 +590,10 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
             }
           : o
       ));
-      
-      if (allDone) {
-        toast.success("Order Ready!", {
-          description: `Order ${order?.orderNumber} is ready for serving`
-        });
-      } else {
-        toast.success("Station items completed!", {
-          description: `${station} station items for order ${order?.orderNumber} are done`
-        });
-      }
+
+      toast.success("Order Ready!", {
+        description: `Order ${order?.orderNumber} is ready for serving`
+      });
     } catch (error) {
       console.error('Error marking order ready:', error);
       toast.error('Failed to mark order as ready');
@@ -982,9 +984,6 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
                             <Badge variant="outline" className="text-xs bg-gray-100">
                               {item.station}
                             </Badge>
-                            <Badge variant="outline" className="text-xs">
-                              {Math.floor(item.preparationTime / 60)} min
-                            </Badge>
                           </div>
                         </div>
                         {item.specialInstructions && (
@@ -1105,22 +1104,26 @@ export function KDSProductionQueue({ station, onLogout }: KDSProductionQueueProp
                             <Badge variant="outline" className="text-xs bg-white">
                               {item.station}
                             </Badge>
-                            {item.status === "PREPARING" && item.startedAt && (
-                              <div className="flex items-center gap-1 text-orange-700 font-bold text-sm">
-                                <Timer className="h-4 w-4" />
-                                {getPreparationTime(item)}
+                            {item.startedAt && (
+                              <div
+                                className="flex items-center gap-1 font-bold text-sm"
+                                style={{ color: item.status === "COMPLETED" ? "#4CAF50" : getItemElapsedColor(item) }}
+                              >
+                                <Clock className="h-4 w-4" />
+                                {getItemElapsed(item)}
                               </div>
                             )}
                           </div>
                         </div>
                         
-                        {/* Progress bar for PREPARING items */}
+                        {/* Progress bar for PREPARING items — fills over 10 minutes, colour shifts green→orange→red */}
                         {item.status === "PREPARING" && item.startedAt && (
                           <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-                            <div 
-                              className="bg-orange-600 h-2 rounded-full transition-all duration-1000"
-                              style={{ 
-                                width: `${Math.min(100, ((currentTime.getTime() - item.startedAt.getTime()) / 1000 / item.preparationTime) * 100)}%`
+                            <div
+                              className="h-2 rounded-full transition-all duration-1000"
+                              style={{
+                                width: `${Math.min(100, ((currentTime.getTime() - item.startedAt.getTime()) / 1000 / 600) * 100)}%`,
+                                backgroundColor: getItemElapsedColor(item),
                               }}
                             />
                           </div>

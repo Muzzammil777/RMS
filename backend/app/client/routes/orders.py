@@ -78,7 +78,7 @@ async def create_order(body: OrderCreate):
         "invoiceUrl": body.invoiceUrl,
         "tableNumber": body.tableNumber,
         "customerName": body.customerName,
-        "source": "client",
+        "source": body.source or "client",
         "createdAt": datetime.utcnow(),
         "updatedAt": datetime.utcnow(),
     }

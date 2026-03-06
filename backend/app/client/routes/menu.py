@@ -12,13 +12,16 @@ router = APIRouter()
 
 def _serialize_menu_item(doc: dict) -> dict:
     item_id = doc.get("id") or str(doc.get("_id", ""))
+    # Derive isVeg from the admin-managed dietType field
+    diet = doc.get("dietType", "")
+    is_veg = (diet == "veg") if diet else bool(doc.get("isVeg"))
     return {
         "id": item_id,
         "name": doc.get("name"),
         "description": doc.get("description"),
         "price": doc.get("price"),
         "image": doc.get("image"),
-        "isVeg": bool(doc.get("isVeg")),
+        "isVeg": is_veg,
         "category": doc.get("category"),
         "available": bool(doc.get("available")),
         "popular": bool(doc.get("popular")),

@@ -6,7 +6,7 @@
 // Backend API base URL
 // In dev mode, use relative path so Vite proxy handles it (avoids browser HTTPS auto-upgrade)
 // In production, use VITE_API_URL env variable
-const API_BASE_URL = import.meta.env.PROD
+export const API_BASE_URL = import.meta.env.PROD
   ? (import.meta.env.VITE_API_URL || '') + '/api/admin'
   : '/api/admin';
 
@@ -183,6 +183,16 @@ export const staffApi = {
     if (params?.date_to) query.append('date_to', params.date_to);
     return fetchApi<{ csv: string; filename: string }>(`/staff/payroll/export/csv?${query.toString()}`);
   },
+
+  // Record a salary payment
+  paySalary: (id: string, data: { amount: number; month: string; paymentMethod: string; notes?: string }) =>
+    fetchApi<any>(`/staff/${id}/salary-payment`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // Get salary payment history for a staff member
+  getSalaryPayments: (id: string) => fetchApi<any[]>(`/staff/${id}/salary-payments`),
 };
 
 
@@ -479,6 +489,15 @@ export const backupApi = {
   // Restore backup
   restore: (id: string) => fetchApi<{ success: boolean; message: string }>(`/settings/backups/${id}/restore`, {
     method: 'POST',
+  }),
+
+  // Download backup data (returns raw JSON payload to trigger browser download)
+  downloadData: (id: string) => fetchApi<any>(`/settings/backups/${id}/download`),
+
+  // Upload a backup JSON file and register it in the backend
+  uploadFile: (data: any) => fetchApi<{ success: boolean; backup: any }>('/settings/backups/upload', {
+    method: 'POST',
+    body: JSON.stringify(data),
   }),
 
   // Delete backup

@@ -88,6 +88,7 @@ class ChunkErrorBoundary extends Component<
 // ---------------------------------------------------------------------------
 const AdminApp  = lazyWithRetry(() => import('@/admin/App'));
 const ClientApp = lazyWithRetry(() => import('@/client/ClientApp'));
+const KioskApp  = lazyWithRetry(() => import('@/client/app/components/kiosk/KioskApp'));
 
 const Fallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-[#FFF8F0]">
@@ -103,6 +104,16 @@ const router = createBrowserRouter(
         <ChunkErrorBoundary>
           <Suspense fallback={<Fallback />}>
             <AdminApp />
+          </Suspense>
+        </ChunkErrorBoundary>
+      ),
+    },
+    {
+      path: '/kiosk',
+      element: (
+        <ChunkErrorBoundary>
+          <Suspense fallback={<Fallback />}>
+            <KioskApp />
           </Suspense>
         </ChunkErrorBoundary>
       ),

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Filter, Plus, Search, X, Sparkles, ArrowLeft, Flame, Clock, Tag, Heart } from 'lucide-react';
+import { Filter, Plus, Minus, Search, X, Sparkles, ArrowLeft, Flame, Clock, Tag, Heart } from 'lucide-react';
 import type { MenuItem } from '@/client/app/data/menuData';
 import { categories as sampleCategories, menuData } from '@/client/app/data/menuData';
 import { fetchMenuCategories, fetchMenuItems } from '@/client/api/menu';
@@ -16,12 +16,15 @@ import quoteBg from "@/client/assets/c253e00ec7272fbcda6f2e745e4614e3759cee54.pn
 interface MenuProps {
   isLoggedIn: boolean;
   user?: User;
+  cart: CartItem[];
   onAddToCart: (item: Omit<CartItem, 'quantity'> & { quantity?: number }) => void;
+  onUpdateQuantity: (id: string, quantity: number) => void;
+  onRemoveItem: (id: string) => void;
   onNavigate: (module: Module) => void;
   onToggleFavorite: (itemId: string) => void;
 }
 
-export default function Menu({ isLoggedIn, user, onAddToCart, onNavigate, onToggleFavorite }: MenuProps) {
+export default function Menu({ isLoggedIn, user, cart, onAddToCart, onUpdateQuantity, onRemoveItem, onNavigate, onToggleFavorite }: MenuProps) {
   const [categories, setCategories] = useState<string[]>(['All']);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
 
@@ -113,6 +116,11 @@ export default function Menu({ isLoggedIn, user, onAddToCart, onNavigate, onTogg
     });
   };
 
+  const getCartQuantity = (itemId: string) => {
+    const cartItem = cart.find(c => c.id === itemId);
+    return cartItem ? cartItem.quantity : 0;
+  };
+
   const quickAddToCart = (item: MenuItem) => {
     if (!isLoggedIn) {
       onNavigate('login');
@@ -120,7 +128,7 @@ export default function Menu({ isLoggedIn, user, onAddToCart, onNavigate, onTogg
     }
 
     const cartItem: Omit<CartItem, 'quantity'> & { quantity?: number } = {
-      id: `${item.id}-${Date.now()}`,
+      id: item.id,
       name: item.name,
       price: item.price,
       image: item.image,
@@ -451,13 +459,37 @@ export default function Menu({ isLoggedIn, user, onAddToCart, onNavigate, onTogg
                     
                     {isLoggedIn ? (
                       <div className="flex gap-2 min-w-0">
-                        <button
-                          onClick={() => quickAddToCart(item)}
-                          disabled={!item.available}
-                          className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-[#3E2723] text-[#C8A47A] border border-[#C8A47A]/30 rounded-xl hover:bg-[#C8A47A] hover:text-[#2D1B10] transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed shadow-lg active:scale-95 group/btn"
-                        >
-                          <Plus className="w-5 h-5" />
-                        </button>
+                        {getCartQuantity(item.id) > 0 ? (
+                          <div className="flex items-center border border-[#C8A47A]/30 rounded-xl overflow-hidden shadow-lg">
+                            <button
+                              onClick={() => {
+                                const qty = getCartQuantity(item.id);
+                                if (qty <= 1) onRemoveItem(item.id);
+                                else onUpdateQuantity(item.id, qty - 1);
+                              }}
+                              className="w-10 h-10 flex items-center justify-center bg-[#3E2723] text-[#C8A47A] hover:bg-[#C8A47A] hover:text-[#2D1B10] transition-all duration-300 active:scale-95"
+                            >
+                              <Minus className="w-5 h-5" />
+                            </button>
+                            <span className="w-10 h-10 flex items-center justify-center text-[#FAF7F2] font-bold text-sm bg-[#3E2723]">
+                              {getCartQuantity(item.id)}
+                            </span>
+                            <button
+                              onClick={() => onUpdateQuantity(item.id, getCartQuantity(item.id) + 1)}
+                              className="w-10 h-10 flex items-center justify-center bg-[#3E2723] text-[#C8A47A] hover:bg-[#C8A47A] hover:text-[#2D1B10] transition-all duration-300 active:scale-95"
+                            >
+                              <Plus className="w-5 h-5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => quickAddToCart(item)}
+                            disabled={!item.available}
+                            className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-[#3E2723] text-[#C8A47A] border border-[#C8A47A]/30 rounded-xl hover:bg-[#C8A47A] hover:text-[#2D1B10] transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed shadow-lg active:scale-95 group/btn"
+                          >
+                            <Plus className="w-5 h-5" />
+                          </button>
+                        )}
                         <button
                           onClick={() => setSelectedItem(item)}
                           disabled={!item.available}

@@ -137,10 +137,11 @@ async def list_orders(
     if table:
         query["tableNumber"] = table
     if waiter_id and waiter_id != "all":
-        # Only the waiter's own orders and all client-placed orders
+        # Only the waiter's own orders and all client-placed / kiosk orders
         query["$or"] = [
             {"waiterId": waiter_id},
             {"source": "client"},
+            {"source": "kiosk"},
         ]
     if date_from:
         query["createdAt"] = {"$gte": datetime.fromisoformat(date_from)}
@@ -347,8 +348,10 @@ async def update_order_status(order_id: str, status: str, deduct_inventory: bool
                 print(f"Inventory deduction error: {e}")
     
     # FLOW INTEGRATION: Create notifications for order status transitions
-    order_number = order.get("orderNumber", "N/A")
-    table_number = order.get("tableNumber", "N/A")
+    order_number = order.get("orderNumber") or f"#ORD-{order_id[:8]}"
+    _raw_table = order.get("tableNumber") or order.get("table")
+    order_type = str(order.get("type") or order.get("orderType") or "").strip().lower()
+    table_number = str(_raw_table) if _raw_table else ("Takeaway" if "takeaway" in order_type or "pickup" in order_type else "N/A")
 
     if status == "preparing":
         await db.notifications.insert_one({
@@ -452,8 +455,10 @@ async def delete_order(order_id: str):
         raise HTTPException(status_code=404, detail="Order not found")
     
     # Create notification for deleted order
-    order_number = order.get("orderNumber", "N/A")
-    table_number = order.get("tableNumber", "N/A")
+    order_number = order.get("orderNumber") or f"#ORD-{order_id[:8]}"
+    _raw_table = order.get("tableNumber") or order.get("table")
+    _order_type = str(order.get("type") or order.get("orderType") or "").strip().lower()
+    table_number = str(_raw_table) if _raw_table else ("Takeaway" if "takeaway" in _order_type or "pickup" in _order_type else "N/A")
     total = order.get("total", 0)
     
     await db.notifications.insert_one({
