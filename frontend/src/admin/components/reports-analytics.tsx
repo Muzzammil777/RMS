@@ -172,7 +172,6 @@ export function ReportsAnalytics() {
       csvRows.push(`"Total Customers",${escapeCsvCell(totalCustomers)}`);
       csvRows.push(`"Dine-in Orders",${escapeCsvCell(dineIn)}`);
       csvRows.push(`"Takeaway Orders",${escapeCsvCell(takeaway)}`);
-      csvRows.push(`"Delivery Orders",${escapeCsvCell(delivery)}`);
       csvRows.push('');
 
       csvRows.push('"SALES TREND"');
@@ -447,15 +446,6 @@ export function ReportsAnalytics() {
                   </div>
                   <span className="font-semibold">
                     {takeaway > 0 ? `${takeaway} (${totalOrders > 0 ? Math.round((takeaway / totalOrders) * 100) : 0}%)` : '-'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">Delivery Orders</span>
-                  </div>
-                  <span className="font-semibold">
-                    {delivery > 0 ? `${delivery} (${totalOrders > 0 ? Math.round((delivery / totalOrders) * 100) : 0}%)` : '-'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between p-3 border rounded-lg">

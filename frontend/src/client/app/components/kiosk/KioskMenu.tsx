@@ -98,12 +98,25 @@ export default function KioskMenu({ onAddToCart, onGoToCart, cartCount, cart, on
 
   const cartTotal = useMemo(() => cart.reduce((sum, c) => sum + c.price * c.quantity, 0), [cart]);
 
-  const addons = [
+  const allAddons = [
     { id: 'extra-cheese', name: 'Extra Cheese', price: 50 },
     { id: 'extra-paneer', name: 'Extra Paneer', price: 80 },
     { id: 'extra-chicken', name: 'Extra Chicken', price: 100 },
     { id: 'butter-on-top', name: 'Butter on Top', price: 30 },
   ];
+
+  const addons = allAddons.filter((addon) => {
+    if (!selectedItem) return true;
+    const cat = selectedItem.category;
+    const isVeg = selectedItem.isVeg;
+    const foodCats = ['Starters', 'Main Course', 'Breads', 'Sides'];
+    if (!foodCats.includes(cat)) return false; // no add-ons for Beverages, Desserts, Salads
+    if (addon.id === 'extra-cheese') return ['Starters', 'Main Course', 'Breads'].includes(cat);
+    if (addon.id === 'extra-paneer') return isVeg && ['Starters', 'Main Course'].includes(cat);
+    if (addon.id === 'extra-chicken') return !isVeg && ['Starters', 'Main Course'].includes(cat);
+    if (addon.id === 'butter-on-top') return ['Breads', 'Main Course'].includes(cat);
+    return true;
+  });
 
   const handleAddToCart = () => {
     if (!selectedItem) return;
@@ -150,7 +163,7 @@ export default function KioskMenu({ onAddToCart, onGoToCart, cartCount, cart, on
       {/* ====== TOP BAR ====== */}
       <div className="flex-shrink-0 bg-[#3E2723] text-white px-4 py-3 flex items-center justify-between shadow-lg z-30">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-[#C8A47A] flex items-center justify-center text-lg font-black text-[#3E2723]" style={{ fontFamily: "'Playfair Display', serif" }}>R</div>
+          <img src="/favicon.png" alt="logo" className="w-10 h-10 rounded-full object-contain" />
           <div>
             <h1 className="text-lg font-bold leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>Self-Order Kiosk</h1>
             <p className="text-[10px] text-white/50 uppercase tracking-widest">Touch to begin</p>
@@ -506,6 +519,7 @@ export default function KioskMenu({ onAddToCart, onGoToCart, cartCount, cart, on
               </div>
 
               {/* Add-ons */}
+              {addons.length > 0 && (
               <div className="mb-4">
                 <p className="text-sm font-semibold text-[#3E2723] mb-2">Add-ons</p>
                 <div className="space-y-2">
@@ -530,6 +544,7 @@ export default function KioskMenu({ onAddToCart, onGoToCart, cartCount, cart, on
                   ))}
                 </div>
               </div>
+              )}
 
               {/* Special Instructions */}
               <div className="mb-5">
