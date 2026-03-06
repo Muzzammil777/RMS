@@ -177,6 +177,74 @@ export default function Reservation({ user, onNavigate }: ReservationProps) {
   const [allTables, setAllTables] = useState<Table[]>([]);
   const totalTables = allTables.length;
 
+  // ── Helper: format 24h "HH:mm" → "h:mm AM/PM" ──
+  const formatTime12h = (time24: string): string => {
+    if (!time24) return '';
+    const [h, m] = time24.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
+    return `${h12}:${m.toString().padStart(2, '0')} ${ampm}`;
+  };
+
+  // Helper for consistent local date string (YYYY-MM-DD)
+  const getLocalDateString = (date: Date | null) => {
+    if (!date) return '';
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Check if a reservation has expired
+  const isReservationExpired = (reservationDate: string, timeSlot: string): boolean => {
+    try {
+      // Parse the reservation date (YYYY-MM-DD)
+      const parts = reservationDate.split('-');
+      if (parts.length !== 3) return false;
+      
+      const resDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+      const today = new Date();
+      
+      // Reset time to midnight for date comparison
+      resDate.setHours(0, 0, 0, 0);
+      today.setHours(0, 0, 0, 0);
+      
+      // If reservation date is in the past, it's expired
+      if (resDate < today) {
+        return true;
+      }
+      
+      // If reservation date is today, check the time slot end time
+      if (resDate.getTime() === today.getTime()) {
+        // Extract end time from timeSlot (e.g., "7:30 AM – 8:50 AM")
+        const timeMatch = timeSlot.match(/(\d{1,2}):(\d{2})\s*(AM|PM).*?–.*?(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+        if (timeMatch) {
+          const endHour = parseInt(timeMatch[4]);
+          const endMin = parseInt(timeMatch[5]);
+          const endAmPm = timeMatch[6].toUpperCase();
+          
+          let endTime = endHour;
+          if (endAmPm === 'PM' && endHour !== 12) endTime += 12;
+          if (endAmPm === 'AM' && endHour === 12) endTime = 0;
+          
+          const now = new Date();
+          const currentHour = now.getHours();
+          const currentMin = now.getMinutes();
+          
+          // Check if current time is past the end time
+          if (currentHour > endTime || (currentHour === endTime && currentMin >= endMin)) {
+            return true;
+          }
+        }
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Error checking reservation expiry:', error);
+      return false;
+    }
+  };
+
   // Wrap derived data in useMemo for performance
   const guestOptions = useMemo(() => [1, 2, 3, 4, 5, 6, 7, 8], []);
   // Derive locations & segments from the actual tables in the database
@@ -189,15 +257,6 @@ export default function Reservation({ user, onNavigate }: ReservationProps) {
     return segs.length > 0 ? segs : ['Front', 'Back'];
   }, [allTables]);
 
-  // ── Helper: format 24h "HH:mm" → "h:mm AM/PM" ──
-  const formatTime12h = (time24: string): string => {
-    if (!time24) return '';
-    const [h, m] = time24.split(':').map(Number);
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    const h12 = h % 12 || 12;
-    return `${h12}:${m.toString().padStart(2, '0')} ${ampm}`;
-  };
-
   // Build a readable time slot label from start/end
   const buildTimeSlot = (startTime: string, endTime: string): string => {
     if (!startTime || !endTime) return '';
@@ -208,19 +267,15 @@ export default function Reservation({ user, onNavigate }: ReservationProps) {
   const checkTimeSlot = buildTimeSlot(checkData.startTime, checkData.endTime);
   const bookingTimeSlot = buildTimeSlot(bookingData.startTime, bookingData.endTime);
 
-  // Get my reservations from table reservations
+  // Get my reservations from table reservations with computed display status
   const myReservations = useMemo(() =>
-    tableReservations.filter(res => res.userId === user.email)
+    tableReservations
+      .filter(res => res.userId === user.email)
+      .map(res => ({
+        ...res,
+        displayStatus: isReservationExpired(res.date, res.timeSlot) ? 'Closed' : res.status
+      }))
     , [tableReservations, user.email]);
-
-  // Helper for consistent local date string (YYYY-MM-DD)
-  const getLocalDateString = (date: Date | null) => {
-    if (!date) return '';
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
 
   const parseAndFormatDisplayDate = (dateStr: string) => {
     if (!dateStr) return '';
@@ -252,7 +307,7 @@ export default function Reservation({ user, onNavigate }: ReservationProps) {
     if (!date) return [];
     const dateStr = getLocalDateString(date);
     return tableReservations
-      .filter(res => res.date === dateStr && res.timeSlot === timeSlot)
+      .filter(res => res.date === dateStr && res.timeSlot === timeSlot && !isReservationExpired(res.date, res.timeSlot))
       .map(res => String(res.tableNumber));
   };
 
@@ -360,7 +415,7 @@ export default function Reservation({ user, onNavigate }: ReservationProps) {
       });
 
       // Fetch all reservations for this slot to calculate overall availability
-      const totalReservedInSlot = tableReservations.filter(r => r.date === dateStr && r.timeSlot === checkTimeSlot).length;
+      const totalReservedInSlot = tableReservations.filter(r => r.date === dateStr && r.timeSlot === checkTimeSlot && !isReservationExpired(r.date, r.timeSlot)).length;
 
       setAvailabilityResults(res.tables.map((t: any) => ({
         ...t,
@@ -377,10 +432,10 @@ export default function Reservation({ user, onNavigate }: ReservationProps) {
       const dateStr = getLocalDateString(checkData.date);
 
       const reservedTableIds = tableReservations
-        .filter(res => res.date === dateStr && res.timeSlot === checkTimeSlot)
+        .filter(res => res.date === dateStr && res.timeSlot === checkTimeSlot && !isReservationExpired(res.date, res.timeSlot))
         .map(res => String(res.tableNumber));
 
-      const totalReservedInSlot = tableReservations.filter(r => r.date === dateStr && r.timeSlot === checkTimeSlot).length;
+      const totalReservedInSlot = tableReservations.filter(r => r.date === dateStr && r.timeSlot === checkTimeSlot && !isReservationExpired(r.date, r.timeSlot)).length;
 
       const filteredTables = allTables.filter(table => {
         const locationMatch = checkData.location === 'any' || table.location.toLowerCase() === checkData.location.toLowerCase();
@@ -1068,12 +1123,15 @@ export default function Reservation({ user, onNavigate }: ReservationProps) {
                               {allTables.find(t => t.tableId === String(reservation.tableNumber))?.tableName || `Table ${reservation.tableNumber}`}
                             </h3>
                             <span
-                              className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${reservation.status === 'Confirmed'
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-yellow-100 text-yellow-700'
+                              className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+                                reservation.displayStatus === 'Closed'
+                                  ? 'bg-gray-300 text-gray-700'
+                                  : reservation.displayStatus === 'Confirmed'
+                                  ? 'bg-green-100 text-green-700'
+                                  : 'bg-yellow-100 text-yellow-700'
                                 }`}
                             >
-                              {reservation.status}
+                              {reservation.displayStatus}
                             </span>
                           </div>
                           <button

@@ -402,4 +402,15 @@ export const categories = [
   "Breads",
   "Desserts",
   "Beverages",
+  "Salads",
+  "Sides",
+];
+
+export const cuisines = [
+  "All Cuisines",
+  "North Indian",
+  "South Indian",
+  "Chinese",
+  "Italian",
+  "Continental",
 ];

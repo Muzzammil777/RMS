@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { X, Send, ArrowLeft, Phone, MapPin, Clock } from 'lucide-react';
 import type { MenuItem } from '@/client/app/data/menuData';
-import { menuData } from '@/client/app/data/menuData';
+import { menuData, cuisines } from '@/client/app/data/menuData';
 import { fetchMenuItems } from '@/client/api/menu';
 import chatbotIcon from "@/client/assets/477edf60f9c7da94cbe6fd9ff229326d5e74932b.png";
+import type { CartItem } from '@/client/app/App';
 
 interface ChatMessage {
   id: string;
@@ -15,9 +16,12 @@ interface ChatMessage {
 
 interface ChatbotProps {
   onNavigateToMenu?: () => void;
+  onAddToCart?: (item: Omit<CartItem, 'quantity'> & { quantity?: number }) => void;
+  isLoggedIn?: boolean;
+  onNavigate?: (module: string) => void;
 }
 
-export default function Chatbot({ onNavigateToMenu }: ChatbotProps) {
+export default function Chatbot({ onNavigateToMenu, onAddToCart, isLoggedIn, onNavigate }: ChatbotProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [navigationStack, setNavigationStack] = useState<string[]>(['main']);
@@ -78,8 +82,17 @@ export default function Chatbot({ onNavigateToMenu }: ChatbotProps) {
     setMessages(prev => [...prev, newMessage]);
   };
 
+  const closeChat = () => {
+    setTimeout(() => {
+      setIsOpen(false);
+      setMessages([]);
+      setNavigationStack(['main']);
+    }, 1500);
+  };
+
   const getMainMenuButtons = () => [
     { label: '🛎️ Browse Menu', action: 'browse_menu' },
+    { label: '🍴 Browse Cuisines', action: 'browse_cuisines' },
     { label: '✨ Today\'s Specials', action: 'todays_specials' },
     { label: '⚙️ Any Issues', action: 'issues' },
     { label: '☎️ Contact', action: 'contact' },
@@ -97,6 +110,9 @@ export default function Chatbot({ onNavigateToMenu }: ChatbotProps) {
     switch (action) {
       case 'browse_menu':
         handleBrowseMenu();
+        break;
+      case 'browse_cuisines':
+        handleBrowseCuisines();
         break;
       case 'todays_specials':
         handleTodaysSpecials();
@@ -128,6 +144,21 @@ export default function Chatbot({ onNavigateToMenu }: ChatbotProps) {
       case 'health_based':
         handleHealthBased(data);
         break;
+      case 'browse_cuisine':
+        handleCuisineBrowse(data);
+        break;
+      case 'select_offer':
+        handleSelectOffer(data);
+        break;
+      case 'select_food_item':
+        handleSelectFoodItem(data);
+        break;
+      case 'add_to_cart':
+        handleAddToCart(data);
+        break;
+      case 'decline_item':
+        handleDeclineItem();
+        break;
       case 'back_to_main':
         handleBackToMain();
         break;
@@ -138,17 +169,82 @@ export default function Chatbot({ onNavigateToMenu }: ChatbotProps) {
 
   const handleBrowseMenu = () => {
     setNavigationStack(prev => [...prev, 'browse_menu']);
+    
+    // Get unique categories from menu items, excluding 'All'
+    const uniqueCategories = Array.from(
+      new Set(menuItems.map(item => item.category))
+    ).filter(cat => cat && cat !== 'All').sort();
+    
+    // Create buttons for each category
+    const categoryButtons = uniqueCategories.map(category => ({
+      label: getCategoryEmoji(category) + ' ' + category,
+      action: 'browse_category',
+      data: category
+    }));
+    
+    // Add back button
+    categoryButtons.push({ label: '🔙 Back to Main Menu', action: 'back_to_main', data: '' });
+    
     addBotMessage(
       "Great! I can help you explore our menu. Here are our categories:",
-      [
-        { label: '🥗 Starters', action: 'browse_category', data: 'Starters' },
-        { label: '🍛 Main Course', action: 'browse_category', data: 'Main Course' },
-        { label: '🍞 Breads', action: 'browse_category', data: 'Breads' },
-        { label: '🍰 Desserts', action: 'browse_category', data: 'Desserts' },
-        { label: '🥤 Beverages', action: 'browse_category', data: 'Beverages' },
-        { label: '🔙 Back to Main Menu', action: 'back_to_main' }
-      ]
+      categoryButtons
     );
+  };
+
+  const getCategoryEmoji = (category: string): string => {
+    const emojiMap: { [key: string]: string } = {
+      'Starters': '🥗',
+      'Main Course': '🍛',
+      'Breads': '🍞',
+      'Desserts': '🍰',
+      'Beverages': '🥤',
+      'Salads': '🥙',
+      'Sides': '🍲'
+    };
+    return emojiMap[category] || '🍽️';
+  };
+
+  const handleBrowseCuisines = () => {
+    setNavigationStack(prev => [...prev, 'browse_cuisines']);
+    
+    // Get unique cuisines from menu items
+    const uniqueCuisines = Array.from(
+      new Set(menuItems.filter(item => item.cuisine).map(item => item.cuisine))
+    ).filter(c => c).sort() as string[];
+    
+    // Create buttons for each cuisine
+    const cuisineButtons = uniqueCuisines.map(cuisine => ({
+      label: getCuisineEmoji(cuisine) + ' ' + cuisine,
+      action: 'browse_cuisine',
+      data: cuisine
+    }));
+    
+    // Add "All Cuisines" option
+    cuisineButtons.unshift({
+      label: '🌍 All Cuisines',
+      action: 'browse_cuisine',
+      data: 'All Cuisines'
+    });
+    
+    // Add back button
+    cuisineButtons.push({ label: '🔙 Back to Main Menu', action: 'back_to_main', data: '' });
+    
+    addBotMessage(
+      "Discover our diverse cuisines! Which one would you like to explore?",
+      cuisineButtons
+    );
+  };
+
+  const getCuisineEmoji = (cuisine: string): string => {
+    const emojiMap: { [key: string]: string } = {
+      'North Indian': '🇮🇳',
+      'South Indian': '🥥',
+      'Chinese': '🥡',
+      'Italian': '🍝',
+      'Continental': '🌍',
+      'All Cuisines': '🌍'
+    };
+    return emojiMap[cuisine] || '🍽️';
   };
 
   const handleTodaysSpecials = () => {
@@ -222,26 +318,105 @@ export default function Chatbot({ onNavigateToMenu }: ChatbotProps) {
 
   const handleOffers = () => {
     setNavigationStack(prev => [...prev, 'offers']);
-    const itemsWithOffers = menuItems.filter(item => item.offer);
     
-    let offerText = "🎊 Active Offers:\n\n";
-    offerText += "1. Weekend Special: 15% off on all orders above ₹500\n";
-    offerText += "2. Lunch Deal: Get 10% off between 12 PM - 3 PM\n";
-    offerText += "3. Loyalty Points: Earn 1 point for every ₹100 spent\n\n";
+    // Get unique offers from menu items
+    const offersSet = new Set<string>();
+    menuItems.forEach(item => {
+      if (item.offer) {
+        offersSet.add(item.offer);
+      }
+    });
     
-    if (itemsWithOffers.length > 0) {
-      offerText += "Items with special offers:";
+    // If no offers found, provide default ones
+    const offers = offersSet.size > 0 
+      ? Array.from(offersSet).sort()
+      : ['Weekend Special', 'Lunch Deal', 'Loyalty Points'];
+    
+    const offerButtons = offers.map(offer => ({
+      label: offer,
+      action: 'select_offer',
+      data: offer
+    }));
+    
+    offerButtons.push({ label: '🔙 Back to Main Menu', action: 'back_to_main', data: '' });
+    
+    addBotMessage(
+      "🎊 Select an offer to view items:",
+      offerButtons
+    );
+  };
+
+  const handleSelectOffer = (offer: string) => {
+    setNavigationStack(prev => [...prev, 'offer_detail']);
+    
+    // Filter items by the selected offer
+    let itemsWithOffer = menuItems.filter(item => item.offer === offer);
+    
+    if (itemsWithOffer.length === 0) {
+      // Show any available items if no specific offer match
+      itemsWithOffer = menuItems.slice(0, 5);
+    }
+    
+    addBotMessage(
+      `Items in ${offer}:`,
+      [{ label: '🔙 Back to Offers', action: 'offers' }],
+      itemsWithOffer
+    );
+  };
+
+  const handleSelectFoodItem = (itemId: string) => {
+    setNavigationStack(prev => [...prev, 'food_detail']);
+    
+    const selectedItem = menuItems.find(item => item.id === itemId);
+    
+    if (selectedItem) {
       addBotMessage(
-        offerText,
-        [{ label: '🔙 Back to Main Menu', action: 'back_to_main' }],
-        itemsWithOffers
-      );
-    } else {
-      addBotMessage(
-        offerText + "\nCheck our menu regularly for item-specific offers!",
-        [{ label: '🔙 Back to Main Menu', action: 'back_to_main' }]
+        `Would you like to add ${selectedItem.name} (₹${selectedItem.price}) to your cart?`,
+        [
+          { label: '✅ Yes, Add to Cart', action: 'add_to_cart', data: itemId },
+          { label: '❌ No, Thanks', action: 'decline_item' }
+        ]
       );
     }
+  };
+
+  const handleAddToCart = (itemId: string) => {
+    if (!isLoggedIn) {
+      addBotMessage(
+        "Please log in to add items to your cart.",
+        [{ label: '🔙 Back to Main Menu', action: 'back_to_main' }]
+      );
+      return;
+    }
+
+    const selectedItem = menuItems.find(item => item.id === itemId);
+    
+    if (selectedItem && onAddToCart) {
+      const cartItem: Omit<CartItem, 'quantity'> & { quantity?: number } = {
+        id: `${selectedItem.id}-${Date.now()}`,
+        name: selectedItem.name,
+        price: selectedItem.price,
+        image: selectedItem.image,
+        isVeg: selectedItem.isVeg,
+        quantity: 1
+      };
+      
+      onAddToCart(cartItem);
+      
+      addBotMessage(
+        `✨ ${selectedItem.name} added to your cart! Enjoy your meal!`
+      );
+      
+      closeChat();
+    }
+  };
+
+  const handleDeclineItem = () => {
+    addBotMessage(
+      "Thank you for your response."
+    );
+    
+    closeChat();
   };
 
   const handleMoodMenu = () => {
@@ -430,6 +605,22 @@ export default function Chatbot({ onNavigateToMenu }: ChatbotProps) {
     );
   };
 
+  const handleCuisineBrowse = (cuisine: string) => {
+    let items: MenuItem[] = [];
+    
+    if (cuisine === 'All Cuisines') {
+      items = menuItems;
+    } else {
+      items = menuItems.filter(item => item.cuisine === cuisine);
+    }
+    
+    addBotMessage(
+      `Here are our ${cuisine} dishes:`,
+      [{ label: '🔙 Back to Cuisines', action: 'browse_cuisines' }],
+      items
+    );
+  };
+
   // Handle category browsing
   useEffect(() => {
     const lastMessage = messages[messages.length - 1];
@@ -510,34 +701,35 @@ export default function Chatbot({ onNavigateToMenu }: ChatbotProps) {
                       {message.items && message.items.length > 0 && (
                         <div className="space-y-2">
                           {message.items.map((item) => (
-                            <div
+                            <button
                               key={item.id}
-                              className="bg-white rounded-xl shadow-sm border border-[#8B5A2B]/20 overflow-hidden hover:shadow-md transition-shadow"
+                              onClick={() => handleSelectFoodItem(item.id)}
+                              className="w-full text-left bg-gradient-to-br from-[#2D1B10] to-[#1A110D] rounded-xl shadow-sm border border-[#C8A47A]/30 overflow-hidden hover:shadow-md hover:border-[#C8A47A]/60 transition-all hover:-translate-y-1 group"
                             >
                               <div className="flex gap-3 p-3">
                                 <img
                                   src={item.image}
                                   alt={item.name}
-                                  className="w-20 h-20 object-cover rounded-lg"
+                                  className="w-20 h-20 object-cover rounded-lg flex-shrink-0"
                                 />
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-start justify-between gap-2">
-                                    <h4 className="font-semibold text-[#8B5A2B] text-sm">
+                                    <h4 className="font-semibold text-[#FAF7F2] text-sm group-hover:text-[#C8A47A] transition-colors">
                                       {item.name}
                                     </h4>
                                     <span className={`w-2 h-2 rounded-full flex-shrink-0 mt-1 ${item.isVeg ? 'bg-green-500' : 'bg-red-500'}`} />
                                   </div>
-                                  <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                                  <p className="text-xs text-[#EADBC8]/60 mt-1 line-clamp-2">
                                     {item.description}
                                   </p>
-                                  <div className="flex items-center justify-between mt-2">
-                                    <span className="text-[#8B5A2B] font-bold text-sm">
+                                  <div className="flex items-center justify-between mt-2 flex-wrap gap-1">
+                                    <span className="text-[#C8A47A] font-bold text-sm">
                                       ₹{item.price}
                                     </span>
-                                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                                    <div className="flex items-center gap-2 text-xs text-[#EADBC8]/60">
                                       <span>{item.calories} kcal</span>
                                       {item.offer && (
-                                        <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded">
+                                        <span className="bg-[#C8A47A]/20 text-[#C8A47A] px-2 py-0.5 rounded text-xs font-bold">
                                           {item.offer}
                                         </span>
                                       )}
@@ -545,7 +737,7 @@ export default function Chatbot({ onNavigateToMenu }: ChatbotProps) {
                                   </div>
                                 </div>
                               </div>
-                            </div>
+                            </button>
                           ))}
                         </div>
                       )}
@@ -559,6 +751,9 @@ export default function Chatbot({ onNavigateToMenu }: ChatbotProps) {
                               onClick={() => {
                                 if (button.action === 'browse_category' && button.data) {
                                   handleCategoryClick(button.data);
+                                } else if (button.action === 'browse_cuisine' && button.data) {
+                                  addUserMessage(button.label);
+                                  handleCuisineBrowse(button.data);
                                 } else {
                                   handleButtonClick(button.action, button.data);
                                 }
