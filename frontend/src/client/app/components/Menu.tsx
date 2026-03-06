@@ -84,12 +84,25 @@ export default function Menu({ isLoggedIn, user, cart, onAddToCart, onUpdateQuan
     });
   }, [filterCuisine, filterVeg, menuItems, searchQuery, selectedCategory]);
 
-  const addons = [
+  const allAddons = [
     { id: 'extra-cheese', name: 'Extra Cheese', price: 50 },
     { id: 'extra-paneer', name: 'Extra Paneer', price: 80 },
     { id: 'extra-chicken', name: 'Extra Chicken', price: 100 },
     { id: 'butter-on-top', name: 'Butter on Top', price: 30 }
   ];
+
+  const addons = allAddons.filter((addon) => {
+    if (!selectedItem) return true;
+    const cat = selectedItem.category;
+    const isVeg = selectedItem.isVeg;
+    const foodCats = ['Starters', 'Main Course', 'Breads', 'Sides'];
+    if (!foodCats.includes(cat)) return false;
+    if (addon.id === 'extra-cheese') return ['Starters', 'Main Course', 'Breads'].includes(cat);
+    if (addon.id === 'extra-paneer') return isVeg && ['Starters', 'Main Course'].includes(cat);
+    if (addon.id === 'extra-chicken') return !isVeg && ['Starters', 'Main Course'].includes(cat);
+    if (addon.id === 'butter-on-top') return ['Breads', 'Main Course'].includes(cat);
+    return true;
+  });
 
   const handleAddToCart = () => {
     if (!selectedItem || !isLoggedIn) return;
@@ -585,6 +598,7 @@ export default function Menu({ isLoggedIn, user, cart, onAddToCart, onUpdateQuan
               </div>
 
               {/* Add-ons */}
+              {addons.length > 0 && (
               <div className="bg-white/60 p-4 sm:p-8 rounded-[32px] border border-[#E8DED0]">
                 <label className="block text-base sm:text-xl font-bold mb-3 sm:mb-6 text-[#3E2723]">Exquisite Enhancements</label>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -621,6 +635,7 @@ export default function Menu({ isLoggedIn, user, cart, onAddToCart, onUpdateQuan
                   })}
                 </div>
               </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-10 items-center bg-[#3E2723]/5 p-5 sm:p-10 rounded-[32px]">
                 <div className="flex flex-col items-center md:items-start">
